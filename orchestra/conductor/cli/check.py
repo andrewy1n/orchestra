@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
 from orchestra.canon.workspace import Access
 from orchestra.conductor.cli.options import open_project
 from orchestra.conductor.verification.check import (
     DEFAULT_TIMEOUT_S,
+    ProposedConstraintReader,
     run_check,
+    run_proposed_constraint_check,
     run_standing_constraint_check,
 )
 from orchestra.tools.command_kit import Command, emit_json
@@ -24,7 +27,14 @@ def _configure(check: argparse.ArgumentParser) -> None:
         metavar="NAME",
         help="Subject of a standing constraint pinned by --phase",
     )
-    check.add_argument("--phase", default=None, help="Phase whose design pins the constraint")
+    target.add_argument(
+        "--proposed-constraint",
+        metavar="ID",
+        help="Pinned constraint-change record id to check at the candidate commit",
+    )
+    check.add_argument(
+        "--phase", default=None, help="Phase whose design or proposal pins the constraint"
+    )
     check.add_argument(
         "--cwd",
         default=None,
@@ -57,10 +67,22 @@ def _configure(check: argparse.ArgumentParser) -> None:
     )
 
 
-def _handle(args: argparse.Namespace) -> int:
+def _handle(args: argparse.Namespace, reader: ProposedConstraintReader) -> int:
     work = Path(args.cwd) if args.cwd else Path.cwd()
     project = open_project(args, Path.cwd(), Access.WRITE, refused_exit=4)
-    if args.standing_constraint:
+    if args.proposed_constraint:
+        if not args.phase or args.allow_dirty:
+            print("--proposed-constraint requires --phase and a clean candidate", file=sys.stderr)
+            return 4
+        outcome = run_proposed_constraint_check(
+            change_id=args.proposed_constraint,
+            phase=args.phase,
+            cwd=work,
+            project=project,
+            reader=reader,
+            timeout=args.timeout,
+        )
+    elif args.standing_constraint:
         if not args.phase:
             print("--standing-constraint requires --phase", file=sys.stderr)
             return 4
@@ -95,12 +117,12 @@ def _handle(args: argparse.Namespace) -> int:
     return outcome.exit_code
 
 
-def commands() -> list[Command]:
+def commands(reader: ProposedConstraintReader) -> list[Command]:
     return [
         Command(
             "check",
             "Run an acceptance verify_command or standing constraint check and write an tuner:check-run",
             configure=_configure,
-            handle=_handle,
+            handle=partial(_handle, reader=reader),
         )
     ]

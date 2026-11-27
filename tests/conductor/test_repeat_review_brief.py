@@ -23,6 +23,9 @@ class FakeProject:
     def list(self, record_type: str) -> list[Record]:
         return list(self.rows.get(record_type, []))
 
+    def records(self) -> list[Record]:
+        return [row for rows in self.rows.values() for row in rows]
+
 
 def record(record_type: str, subject: str, payload: JsonObject, body: str = "") -> Record:
     return {
@@ -118,6 +121,7 @@ def brief(root: Path, project: FakeProject, *, base: str, head: str) -> str:
         phase_head=head,
         phase=PHASE,
         suite_refusal="",
+        architecture_review=lambda *_: "",
     )
 
 

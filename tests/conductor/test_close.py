@@ -94,7 +94,13 @@ def test_close_needs_a_landing_record(tmp_path: Path) -> None:
     seed_effort(project, "alpha", PHASE)
 
     with pytest.raises(close.CloseError, match="landing"):
-        close.close_phase(project, tmp_path, PHASE, FakeStates("MERGED", "a" * 40))
+        close.close_phase(
+            project,
+            tmp_path,
+            PHASE,
+            FakeStates("MERGED", "a" * 40),
+            reconcile_architecture=lambda *_: False,
+        )
 
 
 def test_close_cli_reports_the_pull_request_state(
@@ -150,7 +156,14 @@ def test_close_refuses_a_worktree_holding_the_current_directory(landed: Landed) 
     inside = landed.phase_tree / "nested"
     inside.mkdir()
 
-    result = close.close_phase(landed.project, landed.repo, PHASE, landed.states(), cwd=inside)
+    result = close.close_phase(
+        landed.project,
+        landed.repo,
+        PHASE,
+        landed.states(),
+        cwd=inside,
+        reconcile_architecture=lambda *_: False,
+    )
 
     assert not result.ready
     assert any(
@@ -161,7 +174,14 @@ def test_close_refuses_a_worktree_holding_the_current_directory(landed: Landed) 
 
 
 def test_close_from_the_main_checkout_still_closes(landed: Landed) -> None:
-    result = close.close_phase(landed.project, landed.repo, PHASE, landed.states(), cwd=landed.repo)
+    result = close.close_phase(
+        landed.project,
+        landed.repo,
+        PHASE,
+        landed.states(),
+        cwd=landed.repo,
+        reconcile_architecture=lambda *_: False,
+    )
 
     assert result.ready
     assert not landed.phase_tree.exists()

@@ -120,13 +120,17 @@ def test_merged_phase_closes_end_to_end(phase: Phase) -> None:
     states = GitHubGh(phase.repo, "origin", {}, run=merged_run)
     project = open_store(phase.store)
 
-    assert close.close_phase(project, phase.repo, PHASE, states).ready
+    assert close.close_phase(
+        project, phase.repo, PHASE, states, reconcile_architecture=lambda *_: False
+    ).ready
 
     assert not tree.exists()
     assert not (phase.repo / ".worktrees" / f"{PHASE}--task").exists()
     assert git(phase.repo, "branch", "--list", BRANCH, f"task/{PHASE}/*").stdout.strip() == ""
     assert open_store(phase.store).resolve("score:phase", PHASE)["lifecycle_state"] == "done"
-    assert close.close_phase(project, phase.repo, PHASE, states).ready
+    assert close.close_phase(
+        project, phase.repo, PHASE, states, reconcile_architecture=lambda *_: False
+    ).ready
     assert merged_run.calls[-1] == ("gh", "pr", "view", "7", "--json", "state,headRefOid")
 
 
@@ -157,6 +161,7 @@ def test_land_and_close_use_gh_only(phase: Phase) -> None:
         phase.repo,
         PHASE,
         GitHubGh(phase.repo, "origin", {}, run=merged_run),
+        reconcile_architecture=lambda *_: False,
     )
 
     assert {call[0] for call in [*land_run.calls, *merged_run.calls]} == {"gh"}

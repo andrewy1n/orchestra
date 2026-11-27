@@ -75,7 +75,13 @@ def _through_gate(project: Project) -> None:
 
 def _through_close(project: Project) -> None:
     _landing(project)
-    close.close_phase(project, project.project_root, PHASE, FakeStates("MERGED", HEAD))
+    close.close_phase(
+        project,
+        project.project_root,
+        PHASE,
+        FakeStates("MERGED", HEAD),
+        reconcile_architecture=lambda *_: False,
+    )
 
 
 def _through_wave(project: Project) -> None:
@@ -145,7 +151,13 @@ def test_r10_close_names_the_landing_record_and_field_when_head_sha_is_not_a_str
     _store_without_validation(project, landing, "head_sha", 123)
 
     with pytest.raises(RecordShapeError, match=rf"{landing['id']}.*head_sha"):
-        close.close_phase(project, project.project_root, PHASE, FakeStates("OPEN", HEAD))
+        close.close_phase(
+            project,
+            project.project_root,
+            PHASE,
+            FakeStates("OPEN", HEAD),
+            reconcile_architecture=lambda *_: False,
+        )
 
 
 def test_r10_workflow_names_the_landing_record_and_field_when_head_sha_is_not_a_string(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from orchestra.canon import record_payload
@@ -10,6 +11,8 @@ from orchestra.canon.project import Project
 from orchestra.canon.types import Record
 from orchestra.conductor.verification.review import repeat_review, reviewer
 from orchestra.tools import Git
+
+ArchitectureReview = Callable[[Sequence[Record], Path, str, str, str], str]
 
 
 def load_review_records(project: Project) -> list[Record]:
@@ -36,12 +39,13 @@ def build_review_brief(
     phase_head: str,
     phase: str | None,
     suite_refusal: str,
+    architecture_review: ArchitectureReview,
 ) -> str:
     if suite_refusal:
         raise RuntimeError(suite_refusal)
     records = load_review_records(project)
     phase_diff = reviewer.git_phase_diff(work, base=base, phase_head=phase_head)
-    text = reviewer.build_reviewer_brief(
+    brief = reviewer.build_reviewer_brief(
         records=records,
         phase_diff=phase_diff,
         base=base,
@@ -49,11 +53,15 @@ def build_review_brief(
         phase=phase,
     )
     if phase is None:
-        return text
+        return brief
+    architecture = architecture_review(project.records(), work, phase, base, phase_head)
+    if architecture:
+        brief = f"{brief.rstrip()}\n\n{architecture}"
     prior = repeat_review.prior_failed_review(project, phase)
     if prior is None:
-        return text
-    return text + _repeat_sections(project, work, prior, phase=phase, phase_head=phase_head)
+        return brief
+    repeat = _repeat_sections(project, work, prior, phase=phase, phase_head=phase_head)
+    return f"{brief.rstrip()}\n\n{repeat}"
 
 
 def _repeat_sections(
