@@ -47,7 +47,23 @@ class Term:
     detail: str = ""
 
 
-def _descent_term(worktree: Path, reviewed: str, git_at: Callable[[Path], Git] = Git) -> Term:
+def _differing_from_base(git: Git, head: str, base: str, paths: list[str]) -> list[str]:
+    merge_base = git.run("merge-base", head, base)
+    if merge_base.returncode != 0:
+        return paths
+    fork = merge_base.stdout.strip()
+    if fork == head:
+        return paths
+    diff = git.run("diff", "--name-only", "--no-renames", "-z", f"{fork}..{head}")
+    if diff.returncode != 0:
+        return paths
+    differing = set(diff.stdout.split("\0"))
+    return [path for path in paths if path in differing]
+
+
+def _descent_term(
+    worktree: Path, reviewed: str, git_at: Callable[[Path], Git] = Git, base: str = ""
+) -> Term:
     name = "head-descends-from-review"
     if not reviewed:
         return Term(name, False, "no review check-run")
@@ -68,6 +84,8 @@ def _descent_term(worktree: Path, reviewed: str, git_at: Callable[[Path], Git] =
         return Term(name, False, f"git diff {reviewed}..{head} failed")
     changed = [path for path in diff.stdout.split("\0") if path]
     other = [path for path in changed if not path.startswith(METADATA_DIR)]
+    if other and base:
+        other = _differing_from_base(git, head, base, other)
     if other:
         return Term(name, False, f"paths changed after review outside .canon/: {', '.join(other)}")
     return Term(name, True)
@@ -164,10 +182,10 @@ def gate_terms_for(
     terms.append(Term("review-at-head", review.holds, review.reason))
 
     if head_worktree is not None:
-        terms.append(_descent_term(head_worktree, head, git_at))
+        terms.append(_descent_term(head_worktree, head, git_at, place.base))
     else:
         if place.worktree.is_dir():
-            terms.append(_descent_term(place.worktree, head, git_at))
+            terms.append(_descent_term(place.worktree, head, git_at, place.base))
 
     if policy.gate == "required" and policy.mode not in ("none", ""):
         at_head = head_evidence.suite_at_head(index, phase_slug, head)
