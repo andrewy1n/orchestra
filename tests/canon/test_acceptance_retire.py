@@ -7,10 +7,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from canon_support import SCHEMA_PATH, create, make_project, seed_effort  # noqa: E402
+from canon_support import SCHEMA_PATH, create, make_project, seed_effort
 
-from orchestra.canon.lifecycle import LIFECYCLES  # noqa: E402
-from orchestra.score.lookups import acceptances_of  # noqa: E402
+from orchestra.canon.lifecycle import LIFECYCLES
+from orchestra.score.lookups import acceptances_of
 
 
 @pytest.fixture

@@ -617,7 +617,9 @@ def _supersede_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Mut
         provenance=old.get("provenance"),
         recorded_at=stamp,
     )
-    unchanged_body = normalize_body(successor["body"]) == normalize_body(old.get("body") or "")
+    unchanged_body = normalize_body(successor.get("body") or "") == normalize_body(
+        old.get("body") or ""
+    )
     if successor["payload"] == (old.get("payload") or {}) and unchanged_body:
         raise ValidationError(
             f"supersede of {old['id']} ({old['subject']}) changes nothing; "
