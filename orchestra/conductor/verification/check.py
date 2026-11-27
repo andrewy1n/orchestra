@@ -48,8 +48,9 @@ class CheckOutcome:
     reused: bool = False
 
 
-def git_is_dirty(cwd: Path) -> bool:
-    result = Git(cwd).run("status", "--porcelain")
+def git_is_dirty(cwd: Path, *, all_untracked: bool = False) -> bool:
+    status_flags = ("--untracked-files=all",) if all_untracked else ()
+    result = Git(cwd).run("status", "--porcelain", *status_flags)
     if result.returncode != 0:
         raise RuntimeError(f"git status failed: {result.stderr or result.stdout}")
     return bool(result.stdout.strip())
@@ -364,7 +365,7 @@ def _execute(
 ) -> CheckOutcome:
     try:
         head = Git(work).head()
-        dirty = git_is_dirty(work)
+        dirty = git_is_dirty(work, all_untracked=require_clean_revision)
         if require_clean_revision and dirty:
             return CheckOutcome(
                 3, "", "A proposed constraint check requires a clean candidate worktree."
@@ -380,7 +381,7 @@ def _execute(
     )
     if require_clean_revision:
         try:
-            changed = Git(work).head() != head or git_is_dirty(work)
+            changed = Git(work).head() != head or git_is_dirty(work, all_untracked=True)
         except RuntimeError as exc:
             return CheckOutcome(4, "", str(exc))
         if changed:

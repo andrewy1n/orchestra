@@ -214,3 +214,23 @@ def test_failed_write_rolls_back_earlier_constraint_revision(change: Change) -> 
     assert "subject must be a non-empty slug" in result.err
     assert project.resolve("score:standing-constraint", "imports")["id"] == change.baseline["id"]
     assert project.list("composer:architecture-reconciliation") == []
+
+
+@pytest.mark.parametrize("changed", ["candidate", "proposal"])
+def test_stale_approval_preserves_the_merged_model(change: Change, changed: str) -> None:
+    project = change.project
+    root = project.project_root
+    if changed == "candidate":
+        git = Git(root)
+        git.text("commit", "--allow-empty", "-qm", "Advance the candidate")
+        change.pull_request.head = git.head()
+    else:
+        project.update(change.proposal["id"], body="## Rationale\nChange the proposal in place.")
+    change.pull_request.state = "MERGED"
+    result = invoke("orchestra", ["close", "--phase", "stripe"], root)
+    assert result.code == 0, result.err
+    architecture = invoke("orchestra", ["view", "architecture", "--component", "gateway"], root)
+    assert architecture.code == 0, architecture.err
+    assert "Use the original processor." in architecture.out
+    assert "Use the current adapter." in architecture.out
+    assert project.list("composer:architecture-reconciliation") == []

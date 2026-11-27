@@ -43,6 +43,7 @@ def candidate(tmp_path: Path) -> tuple[Path, str, str, Record]:
             "status": "pending",
             "adr": "stripe-adr",
             "affects": ["gateway", "adapter"],
+            "enforced_by": ["stripe-imports"],
             "constraints": [rule["id"]],
         },
         body="## Rationale\nAuthorize the Stripe adapter.",
@@ -115,4 +116,78 @@ def test_candidate_evidence_refuses_changes_during_the_check(
     assert check.code == 3
     assert "changed during the proposed constraint check" in check.err
     assert project.list("tuner:check-run") == []
+    assert "stripe-imports: unverified" in _review(root, base, head)
+
+
+def test_review_shows_material_fields(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, base, head, _ = candidate
+    brief = _review(root, base, head)
+    assert "ADR enforcement rules stripe-imports" in brief
+    assert "Area payments" in brief
+    assert "Targets gateway" in brief
+    assert "Check command" in brief
+    assert "        true" in brief
+
+
+def test_dependency_changes_keep_src_package_when_declared(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, _, base, _ = candidate
+    project = open_store(root)
+    for component, prefix in (("gateway", "src.payments"), ("adapter", "src.stripe_adapter")):
+        current = project.resolve("composer:component", component)
+        project.supersede(current["id"], payload={"module_prefixes": [prefix]})
+    package = root / "src"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "payments.py").write_text("from . import stripe_adapter\n")
+    (package / "stripe_adapter.py").write_text("")
+    git = Git(root)
+    git.text("add", "src")
+    git.text("commit", "-qm", "Add a dependency inside the src package")
+    assert "Added: gateway → adapter" in _review(root, base, git.head())
+
+
+def test_candidate_evidence_refuses_hidden_untracked_files(
+    candidate: tuple[Path, str, str, Record],
+) -> None:
+    root, _, _, rule = candidate
+    project = open_store(root)
+    updated_rule = project.correct(rule["id"], payload={"check": "test -f local.txt"})["record"]
+    proposal = project.resolve("composer:architecture-proposal", "stripe")
+    project.supersede(proposal["id"], payload={"constraints": [updated_rule["id"]]})
+    (root / "local.txt").write_text("Ignore me in status output.\n")
+    Git(root).text("config", "status.showUntrackedFiles", "no")
+    check = invoke(
+        "orchestra",
+        ["check", "--proposed-constraint", updated_rule["id"], "--phase", "stripe"],
+        root,
+    )
+    assert check.code == 3
+    assert "requires a clean candidate worktree" in check.err
+    assert project.list("tuner:check-run") == []
+
+
+@pytest.mark.parametrize("revision", [None, "sha256:older-rule"])
+def test_candidate_evidence_ignores_mismatched_provenance(
+    candidate: tuple[Path, str, str, Record], revision: str | None
+) -> None:
+    root, base, head, rule = candidate
+    project = open_store(root)
+    project.create(
+        record_type="tuner:check-run",
+        subject="stripe-imports-check",
+        payload={
+            "criterion_id": f"standing-constraint:{rule['id']}",
+            "revision": head,
+            "result": "pass",
+            "effort": "payments",
+            "method": "check",
+            "signed_by": "",
+            "runner": "orchestra",
+        },
+        provenance={"acceptance_revision": revision} if revision is not None else None,
+    )
     assert "stripe-imports: unverified" in _review(root, base, head)

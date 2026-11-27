@@ -78,7 +78,7 @@ def _edges(git: Git, revision: str, prefixes: dict[str, str]) -> set[Edge]:
             continue
         path = PurePosixPath(name)
         parts = path.with_suffix("").parts
-        if parts[0] == "src":
+        if parts[0] == "src" and _component(".".join(parts), prefixes) is None:
             parts = parts[1:]
         package = ".".join(parts[:-1])
         module = package if path.stem == "__init__" else ".".join(parts)
@@ -123,6 +123,7 @@ def architecture_review(
         "",
         f"ADR {proposal.adr} affects {', '.join(proposal.affects)}.",
         proposal.rationale,
+        f"ADR enforcement rules {', '.join(proposal.enforced_by) or 'none'}",
     ]
     evidence = EvidenceIndex(project_records)
     for change in proposal.constraints:
@@ -133,7 +134,21 @@ def architecture_review(
             status = proposed_constraint_outcome(
                 evidence, change.record["id"], change.record["revision"], candidate
             )
-            lines.append(f"  - {change.subject}: {status}. {change.payload['rule']}")
+            targets = change.payload["targets"]
+            target_names = (
+                ", ".join(str(target) for target in targets) if isinstance(targets, list) else ""
+            )
+            lines.extend(
+                (
+                    f"  - {change.subject}: {status}. {change.payload['rule']}",
+                    f"  - Area {change.payload['area']}",
+                    f"  - Targets {target_names or 'none'}",
+                    "  - Check command",
+                    "",
+                )
+            )
+            lines.extend(f"        {line}" for line in str(change.payload["check"]).splitlines())
+            lines.append("")
         lines.append(f"  - {change.basis}")
     lines.extend(("", "## Observed component dependency changes", ""))
     prefixes = _prefixes(project_records)
