@@ -190,8 +190,8 @@ def test_targets_field_is_optional_string_list_on_standing_constraint() -> None:
     assert constraint["fields"]["targets"] == {"list": {"type": "string"}, "optional": True}
 
 
-def test_targets_schema_version_is_2_2_0() -> None:
-    assert json.loads(SCORE_SCHEMA.read_text())["version"] == "2.2.0"
+def test_targets_schema_version_is_2_3_0() -> None:
+    assert json.loads(SCORE_SCHEMA.read_text())["version"] == "2.3.0"
 
 
 def test_targets_keep_existing_constraint_fields() -> None:

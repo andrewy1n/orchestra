@@ -258,6 +258,16 @@
           "type": "string"
         }
       }
+    },
+    "architecture-reconciliation": {
+      "purpose": "The approval applied to the merged architecture for a phase",
+      "lifecycle": "event",
+      "fields": {
+        "approval": {
+          "ref": "composer:architecture-approval",
+          "pin": true
+        }
+      }
     }
   },
   "migrations": []

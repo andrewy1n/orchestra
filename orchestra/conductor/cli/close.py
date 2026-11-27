@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from pathlib import Path
 
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.types import JsonObject
+from orchestra.canon.validation import ValidationError
 from orchestra.canon.workspace import Access, resolve_for_command
 from orchestra.conductor.cli.options import open_project, store_path, work_dir
 from orchestra.conductor.landing.github_pr import GitHubPRError, github_client
@@ -63,7 +65,9 @@ def _configure_close_batch(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _close(args: argparse.Namespace) -> int:
+def _close(
+    args: argparse.Namespace, reconcile_architecture: close.ReconcileArchitecture | None
+) -> int:
     if bool(args.phase) == bool(args.all):
         raise CommandError("pass exactly one of --phase and --all")
     work = work_dir(args).resolve()
@@ -72,9 +76,20 @@ def _close(args: argparse.Namespace) -> int:
         repo = Git(work).primary_checkout()
         states = github_client(repo)
         if args.all:
-            outcomes = close.close_all(project, repo, states, work)
+            outcomes = close.close_all(
+                project, repo, states, work, reconcile_architecture=reconcile_architecture
+            )
         else:
-            outcomes = (close.close_phase(project, repo, args.phase, states, work),)
+            outcomes = (
+                close.close_phase(
+                    project,
+                    repo,
+                    args.phase,
+                    states,
+                    work,
+                    reconcile_architecture=reconcile_architecture,
+                ),
+            )
     except (
         close.CloseError,
         GitHubPRError,
@@ -85,6 +100,7 @@ def _close(args: argparse.Namespace) -> int:
         StoreError,
         ToolError,
         ValueError,
+        ValidationError,
     ) as exc:
         raise CommandError(str(exc)) from exc
     report = close.CloseReport.from_outcomes(outcomes, all_phases=args.all)
@@ -132,7 +148,7 @@ def _result_json(result: close.CloseResult) -> JsonObject:
     }
 
 
-def commands() -> list[Command]:
+def commands(reconcile_architecture: close.ReconcileArchitecture | None = None) -> list[Command]:
     return [
         Command(
             "close-batch",
@@ -145,6 +161,6 @@ def commands() -> list[Command]:
             "After the pull request merges, remove the phase worktrees and branches "
             "and close the phase",
             configure=_configure_close,
-            handle=_close,
+            handle=partial(_close, reconcile_architecture=reconcile_architecture),
         ),
     ]

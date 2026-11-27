@@ -40,6 +40,7 @@ def _build_parser() -> argparse.ArgumentParser:
             render_brief=views_cli.render_brief,
             architecture_review=views_cli.architecture_proposal.architecture_review,
             proposed_constraint=views_cli.architecture_proposal.proposed_constraint,
+            reconcile_architecture=composer_cli.reconcile_architecture,
         ),
     )
     command_kit.mount(sub, score_cli.commands())

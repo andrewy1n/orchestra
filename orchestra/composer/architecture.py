@@ -20,6 +20,7 @@ from orchestra.composer.records import Component as ComponentRecord
 from orchestra.composer.records import Interface as InterfaceRecord
 from orchestra.score.lookups import latest_record
 from orchestra.score.planning.standing_constraint import RECORD_TYPE as STANDING_CONSTRAINT
+from orchestra.score.planning.standing_constraint import is_current_constraint
 
 _DEAD_STATES = ("superseded", "retracted")
 SCOPE_KINDS = ("area", "component", "interface")
@@ -83,8 +84,9 @@ def _require(record: Record, field: str, names: Iterable[str], known: set[str], 
             raise RecordShapeError(record["id"], field, f"names missing {kind} {name}")
 
 
-def _decision(source: ArchitectureDecision) -> Decision:
-    return Decision(source.title, source.rationale, source.status, source.enforced_by)
+def _decision(source: ArchitectureDecision, current: set[str]) -> Decision:
+    enforced_by = tuple(name for name in source.enforced_by if name in current)
+    return Decision(source.title, source.rationale, source.status, enforced_by)
 
 
 def _constraints_for(
@@ -95,7 +97,7 @@ def _constraints_for(
     names = {constraint for constraint, hit in targets.items() if name in hit}
     for decision in decisions:
         if decision.status == "accepted":
-            names.update(decision.enforced_by)
+            names.update(name for name in decision.enforced_by if name in targets)
     return tuple(sorted(names))
 
 
@@ -103,11 +105,13 @@ def _build(records: Sequence[Record]) -> Architecture:
     components = [read_component(r) for r in _current(records, COMPONENT)]
     interfaces = [read_interface(r) for r in _current(records, INTERFACE)]
     decisions = [read_architecture_decision(r) for r in _current(records, ARCHITECTURE_DECISION)]
-    constraint_records = _current(records, STANDING_CONSTRAINT)
+    constraint_versions = _current(records, STANDING_CONSTRAINT)
+    constraint_records = [record for record in constraint_versions if is_current_constraint(record)]
 
     component_names = {c.name for c in components}
     subject_names = component_names | {i.name for i in interfaces}
     constraint_names = {r["subject"] for r in constraint_records}
+    known_constraints = {r["subject"] for r in constraint_versions}
 
     for interface in interfaces:
         _require(interface.record, "connects", interface.connects, component_names, "component")
@@ -116,7 +120,7 @@ def _build(records: Sequence[Record]) -> Architecture:
             decision.record, "affects", decision.affects, subject_names, "component or interface"
         )
         _require(
-            decision.record, "enforced_by", decision.enforced_by, constraint_names, "constraint"
+            decision.record, "enforced_by", decision.enforced_by, known_constraints, "constraint"
         )
     targets: dict[str, tuple[str, ...]] = {}
     for record in constraint_records:
@@ -133,7 +137,7 @@ def _build(records: Sequence[Record]) -> Architecture:
             source.name,
             source.area,
             source.responsibility,
-            tuple(_decision(d) for d in hits),
+            tuple(_decision(d, constraint_names) for d in hits),
             _constraints_for(source.name, hits, targets),
         )
 
@@ -143,7 +147,7 @@ def _build(records: Sequence[Record]) -> Architecture:
             source.name,
             source.provides,
             source.connects,
-            tuple(_decision(d) for d in hits),
+            tuple(_decision(d, constraint_names) for d in hits),
             _constraints_for(source.name, hits, targets),
         )
 

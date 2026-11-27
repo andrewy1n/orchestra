@@ -8,6 +8,9 @@ from pathlib import Path
 from orchestra.canon.errors import StoreError
 from orchestra.canon.project import StoreBindingError
 from orchestra.canon.workspace import Access, open_for_command
+from orchestra.composer.architecture_reconciliation import (
+    reconcile_architecture as reconcile_architecture,
+)
 from orchestra.composer.idea import IdeaError, capture
 from orchestra.composer.placement import PlacementError, place
 from orchestra.tools.command_kit import Command, CommandError
