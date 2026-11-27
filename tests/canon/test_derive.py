@@ -46,7 +46,7 @@ def test_a_withdrawn_dependency_never_satisfies_its_dependents(project):
 def test_a_superseded_dependency_resolves_to_its_successor(project):
     a = make_task(project, "a")
     b = make_task(project, "b", depends_on=["a"])
-    successor = project.supersede(a["id"])["record"]
+    successor = project.supersede(a["id"], payload={"owner": "ann"})["record"]
     assert derived_of(project, b)["ready"] is False
     advance(project, successor, "in_progress", "done")
     assert derived_of(project, b)["ready"] is True
@@ -87,7 +87,7 @@ def test_corrected_and_inverse_links(project):
     config = project.create(
         record_type="alpha:config", subject="c", payload={"title": "t", "level": 1}
     )
-    newer = project.supersede(config["id"])["record"]
+    newer = project.supersede(config["id"], payload={"level": 2})["record"]
     assert project.derived()[config["id"]] == {"referenced_by": {"supersedes": [newer["id"]]}}
 
 
