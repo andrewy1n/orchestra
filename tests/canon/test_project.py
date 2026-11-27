@@ -39,7 +39,7 @@ def test_get_and_list(project):
 
 def test_resolve_returns_the_latest_record_of_a_subject(project):
     task = make_task(project, "t")
-    successor = project.supersede(task["id"])["record"]
+    successor = project.supersede(task["id"], payload={"owner": "ann"})["record"]
     assert project.resolve("task", "t")["id"] == successor["id"]
     with pytest.raises(StoreError, match="unknown record"):
         project.resolve("task", "ghost")
@@ -57,7 +57,7 @@ def test_update_archives_the_prior_revision(project):
 
 def test_supersede_archives_the_predecessor(project):
     task = make_task(project, "t")
-    result = project.supersede(task["id"])
+    result = project.supersede(task["id"], payload={"owner": "ann"})
     assert history_revisions(project, task) == {task["revision"]}
     assert result["predecessor"]["revision"] != task["revision"]
     assert project.validate() == []

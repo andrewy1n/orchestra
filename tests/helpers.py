@@ -411,6 +411,8 @@ def _apply_transition(cli, record_def: dict, record_type: str, record: dict, des
             record["revision"],
             "--payload",
             json.dumps(record["payload"]),
+            "--body",
+            f"{record.get('body') or ''}\n\nrevised.".lstrip(),
         )
         assert result.returncode == 0, (
             f"supersede {record_type} -> {dest} failed (exit {result.returncode}): "

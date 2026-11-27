@@ -6,7 +6,7 @@ import pytest
 WORKTREE = Path(__file__).resolve().parents[1]
 OWN = {"score", "conductor", "tuner"}
 NAMESPACES = {"score", "conductor", "tuner"}
-LIFECYCLES = {"current", "staged", "event", "question", "claim"}
+LIFECYCLES = {"current", "staged", "event", "question", "claim", "retirable"}
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
 TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
 FIELD_KEYS = {"type", "enum", "ref", "list", "pin", "optional"}

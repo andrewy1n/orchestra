@@ -142,7 +142,7 @@ def test_original_freeze_uses_committed_evidence_on_reopened_work(store: Path) -
     _, digest = _red(project, acc)
     project.update(task["id"], transition="in_progress")
     project.update(task["id"], transition="done")
-    project.supersede(task["id"])
+    project.supersede(task["id"], payload={"title": "Repair again"})
     assert _run(store)["recoverable"] == [acc["id"]]
     assert "oracle_hashes" not in project.get(acc["id"])["payload"]
     _run(store, apply=True)
@@ -154,7 +154,7 @@ def test_original_freeze_uses_committed_evidence_on_reopened_work(store: Path) -
 def test_fresh_proof_required_without_attributable_red(store: Path) -> None:
     project, _, acc = _seed(store)
     old = acc
-    acc = project.supersede(acc["id"])["record"]
+    acc = project.supersede(acc["id"], payload={"claim": "probe again"})["record"]
     _red(project, old)
     before = project.records()
     report = _run(store, apply=True, expected=1)

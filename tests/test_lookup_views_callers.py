@@ -57,8 +57,8 @@ def test_r16_preview_prerequisites_come_from_the_current_phase_record(tmp_path: 
     _phase(project, "base")
     _phase(project, "other")
     current = _phase(project, "p1", depends_on=["base"])
-    for index in range(6):
-        target = "other" if index == 5 else "base"
+    for index in range(7):
+        target = "other" if index % 2 == 0 else "base"
         current = project.supersede(current["id"], payload={"depends_on": [target]})["record"]
     preview = RunPreview("alpha", "prepare", ("p1",), (), (), "token")
 

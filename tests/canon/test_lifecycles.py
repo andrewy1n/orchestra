@@ -17,6 +17,7 @@ PATHS = {
 
 ALLOWED = {
     "current": {"active": {"superseded"}},
+    "retirable": {"active": {"retired", "superseded"}, "retired": set(), "superseded": set()},
     "staged": {
         "planned": {"in_progress", "withdrawn", "superseded"},
         "in_progress": {"done", "withdrawn", "superseded"},
@@ -42,6 +43,7 @@ ALLOWED = {
 
 INITIAL = {
     "current": "active",
+    "retirable": "active",
     "staged": "planned",
     "event": "recorded",
     "question": "open",
@@ -162,7 +164,7 @@ def test_current_cannot_supersede_a_superseded_record(project):
     first = project.create(
         record_type="alpha:config", subject="web", payload={"title": "a", "level": 1}
     )
-    project.supersede(first["id"])
+    project.supersede(first["id"], payload={"level": 2})
     with pytest.raises(ValidationError, match="invalid transition"):
         project.supersede(first["id"])
 

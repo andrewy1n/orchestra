@@ -47,7 +47,27 @@ class Term:
     detail: str = ""
 
 
-def _descent_term(worktree: Path, reviewed: str, git_at: Callable[[Path], Git] = Git) -> Term:
+def _changed_paths(git: Git, rev_range: str) -> set[str]:
+    result = git.run("diff", "--name-only", "--no-renames", "-z", rev_range)
+    if result.returncode != 0:
+        raise RuntimeError(f"git diff {rev_range} failed")
+    return {path for path in result.stdout.split("\0") if path}
+
+
+def _paths_needing_review(
+    git: Git, reviewed: str, head: str, base: str, paths: list[str]
+) -> list[str]:
+    fork = git.merge_base(head, base)
+    if fork == head:
+        return paths
+    phase_touched = _changed_paths(git, f"{git.merge_base(reviewed, base)}..{reviewed}")
+    base_differs = _changed_paths(git, f"{fork}..{head}")
+    return [path for path in paths if path in base_differs or path in phase_touched]
+
+
+def _descent_term(
+    worktree: Path, reviewed: str, base: str, git_at: Callable[[Path], Git] = Git
+) -> Term:
     name = "head-descends-from-review"
     if not reviewed:
         return Term(name, False, "no review check-run")
@@ -69,7 +89,20 @@ def _descent_term(worktree: Path, reviewed: str, git_at: Callable[[Path], Git] =
     changed = [path for path in diff.stdout.split("\0") if path]
     other = [path for path in changed if not path.startswith(METADATA_DIR)]
     if other:
-        return Term(name, False, f"paths changed after review outside .canon/: {', '.join(other)}")
+        try:
+            other = _paths_needing_review(git, reviewed, head, base, other)
+        except ToolError as error:
+            detail = error.stderr.strip() or str(error)
+            return Term(name, False, f"{' '.join(error.argv)} failed: {detail}")
+        except RuntimeError as exc:
+            return Term(name, False, str(exc))
+    if other:
+        return Term(
+            name,
+            False,
+            f"paths changed after review outside .canon/ (compared with base {base}): "
+            f"{', '.join(other)}",
+        )
     return Term(name, True)
 
 
@@ -164,10 +197,10 @@ def gate_terms_for(
     terms.append(Term("review-at-head", review.holds, review.reason))
 
     if head_worktree is not None:
-        terms.append(_descent_term(head_worktree, head, git_at))
+        terms.append(_descent_term(head_worktree, head, place.base, git_at))
     else:
         if place.worktree.is_dir():
-            terms.append(_descent_term(place.worktree, head, git_at))
+            terms.append(_descent_term(place.worktree, head, place.base, git_at))
 
     if policy.gate == "required" and policy.mode not in ("none", ""):
         at_head = head_evidence.suite_at_head(index, phase_slug, head)

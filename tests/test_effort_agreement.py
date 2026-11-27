@@ -447,6 +447,7 @@ def _written_states(tmp_path: Path) -> tuple[Project, dict[str, Record], dict[st
         create(project, "score:effort", name, {"goal": name, "kind": "deliver"})
     create(project, "composer:area", "area", {"title": "Area"}, "## Scope\n\nText.")
     create(project, "composer:idea", "idea", {"status": "open", "effort": "alpha"})
+    create(project, "composer:area", "area-two", {"title": "Area two"}, "## Scope\n\nText.")
     create(project, "composer:placement", "alpha", {"area": "area"})
     legacy: JsonObject = {"kind": "deliver"}
     originals: dict[str, Record] = {}
@@ -471,7 +472,7 @@ def _written_states(tmp_path: Path) -> tuple[Project, dict[str, Record], dict[st
         elif record["record_type"] == "composer:area":
             payload = {**record["payload"], "title": "Renamed"}
         elif record["record_type"] == "composer:placement":
-            payload = {"area": "area"}
+            payload = {"area": "area-two"}
         else:
             payload = {"goal": "alpha fixed", "kind": "deliver"}
         successors[record_id] = project.supersede(record_id, payload=payload)["record"]
