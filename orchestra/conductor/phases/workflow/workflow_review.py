@@ -3,13 +3,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from orchestra.canon.project import Project
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import Record
 from orchestra.score.lookups import current_phase, record_order
 from orchestra.score.planning.analyze import analyze_phase
 from orchestra.score.workflow.workflow_reviews import (
     Authority,
     Step,
     WorkflowReviewError,
+    artifact_for_step,
     has_blocking_behavior_question,
     step_input_fingerprint,
 )
@@ -81,6 +82,10 @@ def record_step_review(
     current_artifact = next((record for record in records if record["id"] == artifact["id"]), None)
     if current_artifact is None or current_artifact["revision"] != artifact["revision"]:
         raise WorkflowReviewError("reviewed artifact changed before review")
+    if step == "design":
+        expected = artifact_for_step(records, phase, step)
+        if expected is None or expected["id"] != current_artifact["id"]:
+            raise WorkflowReviewError(f"reviewed artifact must be the current design for {phase!r}")
     required_sources = _required_source_reviews(records, phase, step)
     sources = list(source_reviews) if source_reviews else required_sources
     if [record["id"] for record in sources] != [record["id"] for record in required_sources]:
@@ -104,11 +109,6 @@ def record_step_review(
     if not isinstance(effort, str):
         raise WorkflowReviewError("phase has no effort")
     subject = f"{phase}-{step}-{fingerprint[:16]}"
-    reviewed_pins: JsonObject = {}
-    if step == "design" and current_artifact["record_type"] == "score:design":
-        reviewed_pins["standing_constraints"] = current_artifact["payload"].get(
-            "standing_constraints", []
-        )
     project.apply_at_snapshot(
         [
             {
@@ -125,7 +125,6 @@ def record_step_review(
                     "source_reviews": [record["id"] for record in sources],
                     "authority": authority,
                     "basis": basis,
-                    **reviewed_pins,
                 },
             }
         ],

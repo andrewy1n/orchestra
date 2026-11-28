@@ -79,7 +79,7 @@ def _latest_step_review(records: Sequence[Record], phase: str, step: Step) -> Re
         for record in records_of_type(records, "score:step-review")
         if record["payload"].get("phase") == phase and record["payload"].get("step") == step
     ]
-    artifact = _artifact_for_step(records, phase, step)
+    artifact = artifact_for_step(records, phase, step)
     dependencies: tuple[Step, ...]
     if step == "design":
         dependencies = ("spec",)
@@ -113,7 +113,7 @@ def _active_artifact(records: Sequence[Record], phase: str, record_type: str) ->
     return max(candidates, key=record_order) if candidates else None
 
 
-def _artifact_for_step(records: Sequence[Record], phase: str, step: Step) -> Record | None:
+def artifact_for_step(records: Sequence[Record], phase: str, step: Step) -> Record | None:
     phase_record = _phase_record(records, phase)
     if phase_record is None:
         return None
@@ -265,7 +265,7 @@ def step_readiness(records: Sequence[Record], phase: str, step: Step) -> StepRea
         return StepReadiness(
             step, "blocked", _latest_step_review(records, phase, step), "blocking behavior question"
         )
-    artifact = _artifact_for_step(records, phase, step)
+    artifact = artifact_for_step(records, phase, step)
     if artifact is None:
         return StepReadiness(step, "missing", None, "reviewed output is missing")
     review = _latest_step_review(records, phase, step)

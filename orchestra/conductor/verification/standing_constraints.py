@@ -55,6 +55,11 @@ def _design_pins(record: Record) -> list[str]:
 
 
 def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
+    designs = {
+        record["id"]: record
+        for record in records
+        if record["record_type"] == "score:design" and record["payload"].get("phase") == phase
+    }
     reviews = [
         record
         for record in records
@@ -62,21 +67,18 @@ def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
         and record["lifecycle_state"] == "recorded"
         and record["payload"].get("phase") == phase
         and record["payload"].get("step") == "design"
+        and isinstance(artifact := record["payload"].get("reviewed_artifact"), str)
+        and artifact in designs
     ]
     approved = latest_record(reviews)
     if approved is not None:
-        if "standing_constraints" in approved["payload"]:
-            return list(dict.fromkeys(_design_pins(approved)))
-        artifact_id = approved["payload"].get("reviewed_artifact")
-        artifact = next((record for record in records if record["id"] == artifact_id), None)
-        if artifact is not None and artifact["record_type"] == "score:design":
-            return list(dict.fromkeys(_design_pins(artifact)))
+        artifact_id = approved["payload"]["reviewed_artifact"]
+        assert isinstance(artifact_id, str)
+        return list(dict.fromkeys(_design_pins(designs[artifact_id])))
     ids = [
         pin
-        for record in records
-        if record["record_type"] == "score:design"
-        and record["lifecycle_state"] == "active"
-        and record["payload"].get("phase") == phase
+        for record in designs.values()
+        if record["lifecycle_state"] == "active"
         for pin in _design_pins(record)
     ]
     return list(dict.fromkeys(ids))

@@ -189,6 +189,50 @@ def test_review_reports_revision_specific_pinned_outcomes(refunds: tuple[Project
     draft = project.supersede(design["id"], payload={"standing_constraints": [newer["id"]]})[
         "record"
     ]
+    seed_effort(project, "shipping-effort", "shipping-design")
+    foreign = project.create(
+        record_type="score:design",
+        subject="shipping-design",
+        payload={
+            "phase": "shipping-design",
+            "effort": "shipping-effort",
+            "decisions": [],
+            "standing_constraints": [newer["id"]],
+        },
+        body=DESIGN,
+    )
+    result = invoke(
+        "orchestra",
+        [
+            "workflow",
+            "review",
+            PHASE,
+            "design",
+            "--artifact",
+            foreign["id"],
+            "--authority",
+            "user-approval",
+            "--basis",
+            "Wrong phase.",
+        ],
+        root,
+    )
+    assert result.code != 0
+    assert "must be the current design" in result.err
+    (reviewed_design,) = (
+        record
+        for record in project.list("score:step-review")
+        if record["payload"].get("step") == "design" and record["payload"].get("phase") == PHASE
+    )
+    project.create(
+        record_type="score:step-review",
+        subject="legacy-foreign-design-review",
+        payload={
+            **reviewed_design["payload"],
+            "reviewed_artifact": foreign["id"],
+            "reviewed_revision": foreign["revision"],
+        },
+    )
     acceptance = project.create(
         record_type="score:acceptance",
         subject="refunds-behavior",
@@ -232,7 +276,8 @@ def test_review_reports_revision_specific_pinned_outcomes(refunds: tuple[Project
     assert pinned in rule and fresh[:7] in rule
 
     _review_step(project, "design", draft)
-    project.update(draft["id"], payload={"standing_constraints": [pinned]})
+    with pytest.raises(ValidationError, match="use supersede"):
+        project.update(draft["id"], payload={"standing_constraints": [pinned]})
     orchestra_output(root, "check", "--phase", PHASE, "--standing-constraint", "imports")
     adopted = orchestra_output(root, "view", "verification", "--effort", EFFORT)
     rule = next(line for line in adopted.splitlines() if "**imports**" in line)
