@@ -12,7 +12,7 @@ from conductor_support import _commit_all, record_fixture_design_review
 from conftest import REPO_ROOT
 
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonValue, Record
 from orchestra.cli import main
 from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
@@ -173,18 +173,40 @@ def test_task_plan_policy_cannot_approve_standing_constraint_pins(store: Path) -
     assert "not pinned" in result.stderr
 
 
+def test_corrected_approval_cannot_supply_pins(store: Path) -> None:
+    project, _ = _seed(store, offending=False)
+    (approval,) = project.list("score:step-review")
+    project.correct(approval["id"], payload={"authority": "task-plan-policy"})
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("pins", "message"),
+    [
+        ([None], "must be a list of strings"),
+        (["missing-id"], "pin does not resolve to a standing constraint"),
+    ],
+)
 def test_check_reports_malformed_approved_pins(
-    store: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    store: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    pins: JsonValue,
+    message: str,
 ) -> None:
     project, _ = _seed(store, offending=False)
     records = project.records()
     design = next(record for record in records if record["record_type"] == "score:design")
-    design["payload"]["standing_constraints"] = [None]
+    design["payload"]["standing_constraints"] = pins
     monkeypatch.setattr(Project, "records", lambda _: records)
 
     result = main(["check", "--standing-constraint", NAME, "--phase", PHASE, "--store", str(store)])
 
     captured = capsys.readouterr()
     assert result == 4
-    assert "must be a list of strings" in captured.err
+    assert message in captured.err
     assert not captured.out

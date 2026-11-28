@@ -15,7 +15,7 @@ from orchestra.conductor.verification.requirements import (
     VERIFIED,
     RequirementState,
 )
-from orchestra.score.lookups import latest_record
+from orchestra.score.lookups import direct_corrected_ids, latest_record
 from orchestra.score.planning.standing_constraint import RECORD_TYPE
 
 VIOLATED = "violated"
@@ -61,11 +61,13 @@ def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
         for record in records
         if record["record_type"] == "score:design" and record["payload"].get("phase") == phase
     }
+    corrected = direct_corrected_ids(records)
     reviews = [
         record
         for record in records
         if record["record_type"] == "score:step-review"
         and record["lifecycle_state"] == "recorded"
+        and record["id"] not in corrected
         and record["payload"].get("phase") == phase
         and record["payload"].get("step") == "design"
         and record["payload"].get("authority") in ("user-approval", "explicit-delegation")
@@ -78,6 +80,22 @@ def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
         assert isinstance(artifact_id, str)
         return list(dict.fromkeys(_design_pins(designs[artifact_id])))
     return []
+
+
+def pinned_constraints(records: Sequence[Record], phase: str) -> list[Record]:
+    ids = pinned_constraint_ids(records, phase)
+    if not ids:
+        return []
+    by_id = {record["id"]: record for record in records}
+    constraints: list[Record] = []
+    for pinned_id in ids:
+        pinned = by_id.get(pinned_id)
+        if pinned is None or pinned["record_type"] != RECORD_TYPE:
+            raise RecordShapeError(
+                pinned_id, "standing_constraints", "pin does not resolve to a standing constraint"
+            )
+        constraints.append(pinned)
+    return constraints
 
 
 def _newer_id(records: Sequence[Record], pinned: Record) -> str | None:
@@ -101,14 +119,9 @@ def standing_constraint_status(
     records: Sequence[Record], phase: str, head: str | None
 ) -> list[ConstraintOutcome]:
     index = EvidenceIndex(records)
-    by_id = {record["id"]: record for record in records}
     outcomes: list[ConstraintOutcome] = []
-    for pinned_id in pinned_constraint_ids(records, phase):
-        pinned = by_id.get(pinned_id)
-        if pinned is None or pinned["record_type"] != RECORD_TYPE:
-            raise RecordShapeError(
-                pinned_id, "standing_constraints", "pin does not resolve to a standing constraint"
-            )
+    for pinned in pinned_constraints(records, phase):
+        pinned_id = pinned["id"]
         run: Record | None = None
         reason = "no revision to check against"
         outcome: Outcome = UNVERIFIED
