@@ -41,6 +41,7 @@ packages = [
     "orchestra.conductor.tasks",
     "orchestra.conductor.tasks.close",
     "orchestra.conductor.tasks.redispatch",
+    "orchestra.conductor.tasks.resume",
     "orchestra.conductor.verification.evidence",
     "orchestra.conductor.verification",
     "orchestra.conductor.verification.suite",

@@ -39,9 +39,11 @@ DECLARATIONS = {
     "conductor/tasks": OPERATION,
     "conductor/tasks/close": OPERATION,
     "conductor/tasks/redispatch": MODEL,
+    "conductor/tasks/resume": OPERATION,
     "conductor/verification": OPERATION,
     "conductor/verification/evidence": OPERATION,
     "conductor/verification/review": MODEL,
+    "conductor/verification/review/repeat_review.py": OPERATION,
     "conductor/verification/suite": OPERATION,
 }
 
