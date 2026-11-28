@@ -7,6 +7,7 @@ import pytest
 from canon_support import make_project, seed_effort
 from interfaces.interfaces_support import invoke
 
+from orchestra.canon.project import Project
 from orchestra.conductor.cli import close as close_cli
 from orchestra.tools import Git
 
@@ -20,16 +21,15 @@ class MergedPullRequest:
         return "MERGED", self.candidate
 
 
-def _orchestra(path: Path, *args: str) -> str:
+def orchestra_output(path: Path, *args: str) -> str:
     result = invoke("orchestra", list(args), path)
     assert result.code == 0, result.err
     return result.out
 
 
-@pytest.mark.parametrize("withdraw", [False, True])
-def test_payments_proposal_through_review_and_merge(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, withdraw: bool
-) -> None:
+def reconcile_stripe_adapter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, withdraw: bool = False
+) -> Project:
     project = make_project(tmp_path)
     seed_effort(project, "payments", "stripe")
     (tmp_path / ".git" / "info" / "exclude").write_text(".canon/\n", encoding="utf-8")
@@ -62,7 +62,7 @@ def test_payments_proposal_through_review_and_merge(
             "base_constraint_revision": baseline["revision"],
             "area": "payments",
             "rule": "Allow imports of the Stripe adapter.",
-            "check": "grep -qx 'import stripe_adapter' payments.py",
+            "check": "! grep -x 'import stripe' *.py",
         },
         body="## Basis\nIsolate Stripe behind the adapter.",
     )
@@ -91,14 +91,14 @@ def test_payments_proposal_through_review_and_merge(
     candidate = git.head()
 
     architecture_args = ("view", "architecture", "--component", "payments")
-    before = _orchestra(tmp_path, *architecture_args)
+    before = orchestra_output(tmp_path, *architecture_args)
     assert "Use the original payment provider." in before
     assert "Disallow Stripe imports." in before
 
     review_args = ("review-brief", "--phase", "stripe", "--phase-head", candidate)
-    assert "imports: unverified" in _orchestra(tmp_path, *review_args)
-    _orchestra(tmp_path, "check", "--phase", "stripe", "--proposed-constraint", rule["id"])
-    review = _orchestra(tmp_path, *review_args)
+    assert "imports: unverified" in orchestra_output(tmp_path, *review_args)
+    orchestra_output(tmp_path, "check", "--phase", "stripe", "--proposed-constraint", rule["id"])
+    review = orchestra_output(tmp_path, *review_args)
     assert "Adopt the Stripe adapter." in review
     assert "Added: payments → stripe-adapter" in review
     assert "imports: verified" in review
@@ -115,8 +115,10 @@ def test_payments_proposal_through_review_and_merge(
     )
     if withdraw:
         project.supersede(proposal["id"], payload={"status": "withdrawn"})
-        assert "(withdrawn)" in _orchestra(tmp_path, *review_args)
-        assert "Use the original payment provider." in _orchestra(tmp_path, *architecture_args)
+        assert "(withdrawn)" in orchestra_output(tmp_path, *review_args)
+        assert "Use the original payment provider." in orchestra_output(
+            tmp_path, *architecture_args
+        )
 
     git.text("switch", "main")
     git.text("merge", "--squash", "phase/stripe")
@@ -134,8 +136,8 @@ def test_payments_proposal_through_review_and_merge(
         },
     )
     monkeypatch.setattr(close_cli, "github_client", lambda _repo: MergedPullRequest(candidate))
-    _orchestra(tmp_path, "close", "--phase", "stripe")
-    after = _orchestra(tmp_path, *architecture_args)
+    orchestra_output(tmp_path, "close", "--phase", "stripe")
+    after = orchestra_output(tmp_path, *architecture_args)
     if withdraw:
         assert "Use the original payment provider." in after
         assert "Disallow Stripe imports." in after
@@ -149,3 +151,11 @@ def test_payments_proposal_through_review_and_merge(
     (evidence,) = project.list("tuner:check-run")
     assert evidence["payload"]["revision"] == candidate
     assert evidence["payload"]["criterion_id"] == f"standing-constraint:{rule['id']}"
+    return project
+
+
+@pytest.mark.parametrize("withdraw", [False, True])
+def test_payments_proposal_through_review_and_merge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, withdraw: bool
+) -> None:
+    reconcile_stripe_adapter(tmp_path, monkeypatch, withdraw=withdraw)

@@ -182,7 +182,7 @@ def test_decision_status_schema_has_enum_and_no_default() -> None:
 
 def test_composer_schema_version_adds_architecture_types() -> None:
     schema = json.loads(COMPOSER_SCHEMA.read_text())
-    assert schema["version"] == "1.4.0"
+    assert schema["version"] == "1.5.0"
 
 
 def test_targets_field_is_optional_string_list_on_standing_constraint() -> None:
@@ -190,8 +190,8 @@ def test_targets_field_is_optional_string_list_on_standing_constraint() -> None:
     assert constraint["fields"]["targets"] == {"list": {"type": "string"}, "optional": True}
 
 
-def test_targets_schema_version_is_2_3_0() -> None:
-    assert json.loads(SCORE_SCHEMA.read_text())["version"] == "2.3.0"
+def test_targets_schema_version_is_2_4_0() -> None:
+    assert json.loads(SCORE_SCHEMA.read_text())["version"] == "2.4.0"
 
 
 def test_targets_keep_existing_constraint_fields() -> None:

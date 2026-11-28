@@ -1,10 +1,10 @@
 {
   "format": "canon/1",
   "schemas": {
-    "score": "2.3.0",
+    "score": "2.4.0",
     "conductor": "1.3.0",
     "tuner": "1.1.0",
-    "composer": "1.4.0"
+    "composer": "1.5.0"
   },
   "backend": "sqlite"
 }

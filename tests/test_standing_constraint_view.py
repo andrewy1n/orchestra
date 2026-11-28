@@ -78,13 +78,25 @@ def _constraint(name: str = NAME) -> Record:
     )
 
 
-def _design(*pinned: Record) -> Record:
-    return _record(
+def _approved_design(*pinned: Record) -> list[Record]:
+    design = _record(
         "score:design",
         f"{PHASE}-design",
         {"phase": PHASE, "effort": "e", "standing_constraints": [c["id"] for c in pinned]},
         "active",
     )
+
+    review = _record(
+        "score:step-review",
+        f"{PHASE}-design-approval",
+        {
+            "phase": PHASE,
+            "step": "design",
+            "reviewed_artifact": design["id"],
+            "authority": "user-approval",
+        },
+    )
+    return [design, review]
 
 
 def _constraint_run(constraint: Record, result: str, body: str | None = None) -> Record:
@@ -116,7 +128,7 @@ def _block(text: str) -> str:
 def test_violated_constraint_listed_beside_verified_requirement() -> None:
     constraint = _constraint()
     run = _constraint_run(constraint, "fail", EVIDENCE)
-    text = _view([*_requirement_records(), constraint, _design(constraint), run])
+    text = _view([*_requirement_records(), constraint, *_approved_design(constraint), run])
 
     assert "- **R1**: verified" in text
     assert text.index("### Requirements") < text.index("### Standing constraints")
@@ -130,7 +142,7 @@ def test_violated_constraint_listed_beside_verified_requirement() -> None:
 def test_verified_constraint_shows_outcome_and_check_run() -> None:
     constraint = _constraint()
     run = _constraint_run(constraint, "pass")
-    block = _block(_view([*_requirement_records(), constraint, _design(constraint), run]))
+    block = _block(_view([*_requirement_records(), constraint, *_approved_design(constraint), run]))
 
     assert f"- **{NAME}** (payments): verified" in block
     assert run["id"] in block
@@ -140,7 +152,9 @@ def test_pinned_constraint_without_applicable_check_run_reads_unverified() -> No
     old = _constraint()
     current = _constraint()
     older_pass = _constraint_run(old, "pass")
-    block = _block(_view([*_requirement_records(), old, current, _design(current), older_pass]))
+    block = _block(
+        _view([*_requirement_records(), old, current, *_approved_design(current), older_pass])
+    )
 
     assert f"- **{NAME}** (payments): unverified" in block
     assert current["id"] in block
@@ -149,7 +163,7 @@ def test_pinned_constraint_without_applicable_check_run_reads_unverified() -> No
 
 def test_no_block_when_phase_pins_nothing() -> None:
     constraint = _constraint()
-    text = _view([*_requirement_records(), constraint, _design()])
+    text = _view([*_requirement_records(), constraint, *_approved_design()])
 
     assert "- **R1**: verified" in text
     assert "### Standing constraints" not in text
@@ -160,7 +174,9 @@ def test_superseded_declaration_shows_newer_version() -> None:
     run = _constraint_run(old, "pass")
     old_inactive: Record = {**old, "lifecycle_state": "superseded"}
     newer = _constraint()
-    block = _block(_view([*_requirement_records(), old_inactive, newer, _design(old), run]))
+    block = _block(
+        _view([*_requirement_records(), old_inactive, newer, *_approved_design(old), run])
+    )
 
     assert f"- **{NAME}** (payments): verified" in block
     assert old["id"] in block
@@ -170,7 +186,7 @@ def test_superseded_declaration_shows_newer_version() -> None:
 def test_constraint_at_other_revision_reads_unverified_in_view() -> None:
     constraint = _constraint()
     run = _constraint_run(constraint, "pass")
-    records = [*_requirement_records(), constraint, _design(constraint), run]
+    records = [*_requirement_records(), constraint, *_approved_design(constraint), run]
 
     at_a = _block(render_view(VERIFICATION, records, head_of=lambda _phase: "abc"))
     at_b = _block(render_view(VERIFICATION, records, head_of=lambda _phase: "def"))
@@ -183,16 +199,17 @@ def test_constraint_at_other_revision_reads_unverified_in_view() -> None:
     assert "def" in at_b
 
 
-def test_head_is_not_resolved_when_no_constraint_is_pinned() -> None:
+def test_requirement_uses_phase_head_without_pins() -> None:
     calls: list[str] = []
 
     def head_of(phase: str) -> str | None:
         calls.append(phase)
-        return "abc"
+        return "def"
 
-    render_view(VERIFICATION, [*_requirement_records(), _constraint()], head_of=head_of)
+    text = render_view(VERIFICATION, _requirement_records(), head_of=head_of)
 
-    assert calls == []
+    assert calls == [PHASE]
+    assert "- **R1**: unverified" in text
 
 
 def test_head_is_resolved_for_the_phase_that_pins_constraints() -> None:
@@ -204,7 +221,9 @@ def test_head_is_resolved_for_the_phase_that_pins_constraints() -> None:
         return "abc"
 
     render_view(
-        VERIFICATION, [*_requirement_records(), constraint, _design(constraint)], head_of=head_of
+        VERIFICATION,
+        [*_requirement_records(), constraint, *_approved_design(constraint)],
+        head_of=head_of,
     )
 
     assert calls == [PHASE]
@@ -260,3 +279,21 @@ def test_phase_head_is_none_before_the_phase_branch_exists(tmp_path: Path) -> No
     )
 
     assert phase_head_of([phase], tmp_path)(PHASE) is None
+
+
+def test_effort_view_honors_an_approval_correction_in_another_effort() -> None:
+    constraint = _constraint()
+    design, approval = _approved_design(constraint)
+    records = [*_requirement_records(), constraint, design, approval]
+    correction = _record(
+        "score:step-review",
+        "corrected-approval",
+        {"phase": "shipping", "effort": "shipping-effort", "step": "design"},
+    )
+    correction["relationships"] = {"corrects": [approval["id"]]}
+
+    before = render_view(VERIFICATION, records, effort="e", head_of=lambda _: "abc")
+    after = render_view(VERIFICATION, [*records, correction], effort="e", head_of=lambda _: "abc")
+
+    assert "### Standing constraints" in before
+    assert "### Standing constraints" not in after

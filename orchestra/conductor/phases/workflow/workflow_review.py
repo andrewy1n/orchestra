@@ -10,6 +10,7 @@ from orchestra.score.workflow.workflow_reviews import (
     Authority,
     Step,
     WorkflowReviewError,
+    artifact_for_step,
     has_blocking_behavior_question,
     step_input_fingerprint,
 )
@@ -81,6 +82,10 @@ def record_step_review(
     current_artifact = next((record for record in records if record["id"] == artifact["id"]), None)
     if current_artifact is None or current_artifact["revision"] != artifact["revision"]:
         raise WorkflowReviewError("reviewed artifact changed before review")
+    if step == "design":
+        expected = artifact_for_step(records, phase, step)
+        if expected is None or expected["id"] != current_artifact["id"]:
+            raise WorkflowReviewError(f"reviewed artifact must be the current design for {phase!r}")
     required_sources = _required_source_reviews(records, phase, step)
     sources = list(source_reviews) if source_reviews else required_sources
     if [record["id"] for record in sources] != [record["id"] for record in required_sources]:

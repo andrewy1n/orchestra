@@ -121,6 +121,17 @@ def _seed_phase(project: Project) -> Record:
     )
 
 
+def _approve_design(project: Project, design: Record) -> None:
+    record_step_review(
+        project,
+        phase=PHASE,
+        step="design",
+        artifact=design,
+        authority="user-approval",
+        basis="Approved for the refunds fixture.",
+    )
+
+
 def _scenario(root: Path) -> tuple[Project, Record, str]:
     """Declare, brief, pin, then run both checks at one revision; return the revision."""
     store = root
@@ -134,7 +145,7 @@ def _scenario(root: Path) -> tuple[Project, Record, str]:
     assert RULE in brief.stdout
     assert BASIS in brief.stdout
 
-    project.create(
+    design = project.create(
         record_type="score:design",
         subject=f"{PHASE}-design",
         payload={
@@ -145,6 +156,7 @@ def _scenario(root: Path) -> tuple[Project, Record, str]:
         },
         body=DESIGN_BODY,
     )
+    _approve_design(project, design)
     payments = store / "orchestra" / "payments"
     payments.mkdir(parents=True)
     (payments / "refunds.py").write_text("from __future__ import annotations\n\nimport stripe\n")
@@ -226,10 +238,11 @@ def test_readopted_constraint_version_is_unverified_until_checked_at_revision(
         },
     )["record"]
     design = next(r for r in open_store(store).records() if r["record_type"] == "score:design")
-    project.supersede(
+    successor = project.supersede(
         design["id"],
         payload={**design["payload"], "standing_constraints": [revised["id"]]},
-    )
+    )["record"]
+    _approve_design(project, successor)
 
     before = _orchestra(store, "view", "verification")
 

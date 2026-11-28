@@ -38,6 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
         sub,
         conductor_cli.commands(
             render_brief=views_cli.render_brief,
+            project_context=views_cli.project_context,
             architecture=conductor_cli.ArchitectureChanges(
                 review=views_cli.architecture_proposal.architecture_review,
                 proposed_constraint=composer_cli.architecture_change.proposed_constraint,

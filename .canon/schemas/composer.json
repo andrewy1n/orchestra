@@ -1,6 +1,6 @@
 {
   "namespace": "composer",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "types": {
     "area": {
       "purpose": "A named, long-lived product area",
@@ -73,6 +73,10 @@
         },
         "description": {
           "type": "string"
+        },
+        "area": {
+          "ref": "composer:area",
+          "optional": true
         },
         "status": {
           "enum": [

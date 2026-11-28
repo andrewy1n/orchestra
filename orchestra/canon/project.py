@@ -582,6 +582,11 @@ def _update_record(store: Backend, schemas: SchemaSet, op: JsonObject) -> Record
     payload_updates = op.get("payload") or {}
     if payload_updates:
         record["payload"] = {**(record.get("payload") or {}), **_payload_object(payload_updates)}
+    if type_def.supersede_only and (
+        record["payload"] != old["payload"]
+        or normalize_body(record.get("body") or "") != normalize_body(old.get("body") or "")
+    ):
+        raise ValidationError(f"{old['record_type']} contents are versioned; use supersede")
     index = RecordIndex(store.iter_records())
     validate_record(schemas, record, index)
     validate_phase_effort(record, schemas, index)

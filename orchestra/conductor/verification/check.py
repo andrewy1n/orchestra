@@ -22,12 +22,9 @@ from orchestra.conductor.verification.policy import (
 )
 from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
-    pinned_constraint_ids,
+    pinned_constraints,
 )
 from orchestra.score.planning.phase import current_phase_model
-from orchestra.score.planning.standing_constraint import (
-    RECORD_TYPE as STANDING_CONSTRAINT,
-)
 from orchestra.score.planning.standing_constraint import read_standing_constraint
 from orchestra.tools import Git
 
@@ -261,25 +258,14 @@ def run_standing_constraint_check(
     allow_dirty: bool = False,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
-    records = project.records()
-    pinned = None
-    effort = ""
-    for design in records:
-        if (
-            design["record_type"] == "score:design"
-            and design["lifecycle_state"] == "active"
-            and design["payload"].get("phase") == phase
-        ):
-            effort = str(design["payload"].get("effort") or effort)
-    for pinned_id in pinned_constraint_ids(records, phase):
-        candidate = next((r for r in records if r["id"] == pinned_id), None)
-        if (
-            candidate is not None
-            and candidate["record_type"] == STANDING_CONSTRAINT
-            and candidate["subject"] == name
-        ):
-            pinned = candidate
-            break
+    try:
+        records = project.records()
+        pins = pinned_constraints(records, phase)
+        phase_model = current_phase_model(phase, records)
+    except StoreError as exc:
+        return CheckOutcome(4, "", str(exc))
+    effort = phase_model.effort if phase_model is not None else ""
+    pinned = next((candidate for candidate in pins if candidate["subject"] == name), None)
     if pinned is None:
         return CheckOutcome(
             exit_code=4,

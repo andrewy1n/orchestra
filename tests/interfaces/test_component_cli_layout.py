@@ -177,6 +177,7 @@ def _injected(module_name: str) -> dict[str, object]:
     if module_name == "orchestra.conductor.cli":
         return {
             "render_brief": lambda _subject, _records: "",
+            "project_context": lambda *_: "",
             "architecture": ArchitectureChanges(
                 review=lambda *_: "",
                 proposed_constraint=lambda *_: None,

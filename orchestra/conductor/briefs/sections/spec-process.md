@@ -4,7 +4,8 @@
    the phase, effort brief, milestones, prerequisites, decisions, constraints,
    assessments, and relevant code. Read the phase,
    effort brief, prerequisites, decisions, constraints, and phase assessments.
-   Read the brief with:
+   When the product area is known, read its overview and capabilities with
+   `orchestra workflow brief {phase} spec --area <area>`. Read the effort brief with:
 
 ```bash
 canon list --type score:brief --where payload.effort={effort} --state active --full

@@ -12,6 +12,7 @@ from orchestra.conductor.briefs.render import render_skill_brief
 from orchestra.conductor.cli.options import open_project, work_dir
 from orchestra.conductor.phases.workflow.run_record import resolve_run
 from orchestra.conductor.phases.workflow.workflow import (
+    ProjectContext,
     RunAction,
     RunPreview,
     WorkflowRunError,
@@ -97,12 +98,15 @@ def _configure_brief(brief: argparse.ArgumentParser) -> None:
         choices=("spec", "design", "tasks", "execute", "verify", "land"),
     )
     brief.add_argument("--skill", help="Print the brief for a skill instead of a phase step")
-    brief.add_argument(
+    scope = brief.add_mutually_exclusive_group()
+    scope.add_argument(
         "--area",
         action="append",
         default=[],
-        help="Area the design touches; repeat to name several (design step only)",
+        help="Product area for specification or design context",
     )
+    scope.add_argument("--component", default="", help="Component for design context")
+    scope.add_argument("--interface", default="", help="Interface for design context")
     _add_read_options(brief)
 
 
@@ -259,14 +263,26 @@ def _next(args: argparse.Namespace) -> int:
     return _status_command(args, actions_only=True)
 
 
-def _brief(args: argparse.Namespace) -> int:
+def _brief(args: argparse.Namespace, project_context: ProjectContext) -> int:
     if args.skill is not None:
         return _skill_brief_command(args)
     if args.phase is None or args.step is None:
         raise CommandError("arguments: give --skill or both phase and step")
+    if (args.component or args.interface) and args.step != "design":
+        raise CommandError("arguments: --component and --interface require the design step")
+    if args.area and args.step not in ("spec", "design"):
+        raise CommandError("arguments: --area requires the spec or design step")
     project = _open(args, Access.READ)
     try:
-        action = phase_step_action(project, args.phase, args.step, args.area)
+        action = phase_step_action(
+            project,
+            args.phase,
+            args.step,
+            args.area,
+            project_context=project_context,
+            component=args.component,
+            interface=args.interface,
+        )
     except (
         OSError,
         RuntimeError,
@@ -352,7 +368,7 @@ def _amend(args: argparse.Namespace) -> int:
     return 0
 
 
-def commands() -> list[Command]:
+def commands(project_context: ProjectContext) -> list[Command]:
     return [
         Command(
             "workflow",
@@ -386,7 +402,7 @@ def commands() -> list[Command]:
                     "brief",
                     "Print the brief for one phase step",
                     configure=_configure_brief,
-                    handle=_brief,
+                    handle=lambda args: _brief(args, project_context),
                 ),
                 Command(
                     "review",

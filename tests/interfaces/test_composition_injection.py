@@ -89,6 +89,7 @@ def _conductor_adder(sub: SubparserGroup) -> None:
         sub,
         conductor_cli.commands(
             render_brief=views_cli.render_brief,
+            project_context=lambda *_: "",
             architecture=conductor_cli.ArchitectureChanges(
                 review=lambda *_: "",
                 proposed_constraint=lambda *_: None,

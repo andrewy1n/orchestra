@@ -20,6 +20,7 @@ from orchestra.conductor.landing import gate
 from orchestra.conductor.phases.progress import close
 from orchestra.conductor.phases.workflow import workflow_review
 from orchestra.conductor.verification.check import run_check
+from orchestra.score.workflow.workflow_reviews import Authority
 from orchestra.tools import Git
 
 CLOSE_PHASE = "p1"
@@ -616,3 +617,23 @@ def ready_for_verify(phase: Phase) -> None:
                 "effort": EFFORT,
             },
         )
+
+
+def record_fixture_design_review(
+    project: Project, design: Record, *, authority: Authority = "user-approval"
+) -> None:
+    project.create(
+        record_type="score:step-review",
+        subject=f"{design['subject']}-approval",
+        payload={
+            "effort": design["payload"]["effort"],
+            "phase": design["payload"]["phase"],
+            "step": "design",
+            "reviewed_artifact": design["id"],
+            "reviewed_revision": design["revision"],
+            "input_fingerprint": "test-fixture",
+            "source_reviews": [],
+            "authority": authority,
+            "basis": "Approved design fixture",
+        },
+    )

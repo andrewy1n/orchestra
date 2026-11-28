@@ -6,7 +6,8 @@
    exists. Route back to spec when the contract is missing or stale.
 2. Name the areas the design touches. Run
    `orchestra workflow brief {phase} design --area <area>` for each area
-   (repeat `--area`). Read the listed standing constraints and follow them.
+   (repeat `--area`). Use `--component` or `--interface` for a narrower scope.
+   Read the relevant architecture and follow the listed standing constraints.
    Research relevant code and current technical facts before asking the user
    about preferences. Apply the shared intent Q&A. Ask about only choices that
    change architecture, interfaces, recovery, cost, or risk.
@@ -52,6 +53,9 @@ expected revision. Do not update a current design in place.
 8. Record a workflow review only after explicit user approval or delegation.
    Use the design record id as the artifact. Match `authority` to the user's
    action. A review record cannot replace approval.
+   Subsequent checks use the standing constraint versions in the approved design.
+   Use `canon supersede` to publish a changed standing rule, then approve the
+   successor design to adopt the new rule.
 
 ```bash
 orchestra workflow review {phase} design \

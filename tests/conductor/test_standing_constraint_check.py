@@ -7,11 +7,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conductor_support import _commit_all
+import pytest
+from conductor_support import _commit_all, record_fixture_design_review
 from conftest import REPO_ROOT
 
 from orchestra.canon.project import Project, open_store
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonValue, Record
+from orchestra.cli import main
 from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
     standing_constraint_status,
@@ -43,7 +45,9 @@ SCANNER = (
 )
 
 
-def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, Record]:
+def _seed(
+    store: Path, *, offending: bool, pin: bool = True, approved: bool = True
+) -> tuple[Project, Record]:
     payments = store / "orchestra" / "payments"
     payments.mkdir(parents=True)
     imports = "import stripe" if offending else "import json"
@@ -69,7 +73,7 @@ def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, R
         },
         body="## Basis\n\nProvider access belongs in billing adapters.\n",
     )
-    project.create(
+    design = project.create(
         record_type="score:design",
         subject="refunds-design",
         payload={
@@ -80,6 +84,8 @@ def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, R
         },
         body=DESIGN_BODY,
     )
+    if approved:
+        record_fixture_design_review(project, design)
     _commit_all(store, "seed refunds")
     return project, constraint
 
@@ -144,3 +150,63 @@ def test_unpinned_constraint_name_is_refused_without_check_run(store: Path) -> N
     assert "pinned" in (result.stderr + result.stdout).lower()
     after = [r for r in open_store(store).records() if r["record_type"] == "tuner:check-run"]
     assert len(after) == len(before)
+
+
+def test_draft_design_does_not_pin_a_constraint(store: Path) -> None:
+    project, _ = _seed(store, offending=False, approved=False)
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+    assert standing_constraint_status(project.records(), PHASE, _head(store)) == []
+
+
+def test_task_plan_policy_cannot_approve_standing_constraint_pins(store: Path) -> None:
+    project, _ = _seed(store, offending=False, approved=False)
+    (design,) = project.list("score:design")
+    record_fixture_design_review(project, design, authority="task-plan-policy")
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+
+
+def test_corrected_approval_cannot_supply_pins(store: Path) -> None:
+    project, _ = _seed(store, offending=False)
+    (approval,) = project.list("score:step-review")
+    project.correct(approval["id"], payload={"authority": "task-plan-policy"})
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("pins", "message"),
+    [
+        ([None], "must be a list of strings"),
+        (["missing-id"], "pin does not resolve to a standing constraint"),
+    ],
+)
+def test_check_reports_malformed_approved_pins(
+    store: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    pins: JsonValue,
+    message: str,
+) -> None:
+    project, _ = _seed(store, offending=False)
+    records = project.records()
+    design = next(record for record in records if record["record_type"] == "score:design")
+    design["payload"]["standing_constraints"] = pins
+    monkeypatch.setattr(Project, "records", lambda _: records)
+
+    result = main(["check", "--standing-constraint", NAME, "--phase", PHASE, "--store", str(store)])
+
+    captured = capsys.readouterr()
+    assert result == 4
+    assert message in captured.err
+    assert not captured.out

@@ -8,7 +8,7 @@ OWN = {"score", "conductor", "tuner"}
 NAMESPACES = {"score", "conductor", "tuner"}
 LIFECYCLES = {"current", "staged", "event", "question", "claim", "retirable"}
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
-TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
+TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections", "supersede_only"}
 FIELD_KEYS = {"type", "enum", "ref", "list", "pin", "optional"}
 SCALARS = {"string", "integer", "number", "boolean"}
 
