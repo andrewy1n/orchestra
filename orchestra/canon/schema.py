@@ -17,7 +17,7 @@ QUALIFIED = re.compile(r"^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
 FIELD_NAME = re.compile(r"^[a-z_][a-z0-9_]*$")
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 MODULE_KEYS = {"namespace", "version", "types", "migrations"}
-TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections"}
+TYPE_KEYS = {"purpose", "lifecycle", "fields", "sections", "supersede_only"}
 SCALARS = ("string", "integer", "number", "boolean")
 MIGRATION_KEYS = {"from", "to", "rename_type", "rename_field", "map_enum", "drop_field"}
 DEPENDS_ON = "depends_on"
@@ -34,6 +34,7 @@ class TypeDef:
     lifecycle: Lifecycle
     fields: dict[str, JsonObject]
     sections: tuple[str, ...]
+    supersede_only: bool = False
 
     @property
     def namespace(self) -> str:
@@ -198,6 +199,8 @@ def validate_module(data: JsonValue, source: str = "module") -> JsonObject:
         lifecycle_name = get_string(type_spec, "lifecycle")
         if lifecycle_name is None:
             raise SchemaError(f"{where}: lifecycle must be one of {sorted(LIFECYCLES)}")
+        if "supersede_only" in type_spec and not isinstance(type_spec["supersede_only"], bool):
+            raise SchemaError(f"{where}: supersede_only must be a boolean")
         fields = get_object(type_spec, "fields")
         if fields is None:
             raise SchemaError(f"{where}: fields is required and must be an object")
@@ -266,6 +269,7 @@ def type_defs(module: JsonObject) -> dict[str, TypeDef]:
             purpose=purpose,
             lifecycle=lifecycle,
             fields=fields,
+            supersede_only=spec.get("supersede_only") is True,
             sections=tuple(
                 section
                 for section in (get_list(spec, "sections") or ())

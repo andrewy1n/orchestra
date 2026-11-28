@@ -77,8 +77,12 @@ def test_spec_brief_shows_scoped_product_context(
     assert "Buy shipping labels" not in result.out
 
 
+@pytest.mark.parametrize(
+    ("flag", "scope"),
+    [("--area", "billing"), ("--component", "billing-adapter"), ("--interface", "refund-api")],
+)
 def test_design_brief_shows_scoped_architecture_context(
-    project: Project, capsys: pytest.CaptureFixture[str]
+    project: Project, capsys: pytest.CaptureFixture[str], flag: str, scope: str
 ) -> None:
     spec = project.create(
         record_type="score:specification",
@@ -118,7 +122,7 @@ def test_design_brief_shows_scoped_architecture_context(
     project.create(
         record_type="composer:architecture-decision",
         subject="isolate-stripe",
-        payload={"status": "accepted", "affects": ["billing-adapter"]},
+        payload={"status": "accepted", "affects": ["billing-adapter", "refund-api"]},
         body="## Rationale\nKeep the payment provider replaceable.",
     )
     rule = project.create(
@@ -128,7 +132,7 @@ def test_design_brief_shows_scoped_architecture_context(
             "area": "billing",
             "rule": "Only billing adapters import Stripe.",
             "check": "true",
-            "targets": ["billing-adapter"],
+            "targets": ["billing-adapter", "refund-api"],
         },
         body="## Basis\nKeep Stripe behind the adapter.",
     )
@@ -139,8 +143,8 @@ def test_design_brief_shows_scoped_architecture_context(
             "brief",
             PHASE,
             "design",
-            "--area",
-            "billing",
+            flag,
+            scope,
             "--store",
             str(project.project_root),
         ]
@@ -148,7 +152,10 @@ def test_design_brief_shows_scoped_architecture_context(
     result = capsys.readouterr()
 
     assert code == 0, result.out + result.err
-    assert "Owns card refunds." in result.out
+    assert f"## Architecture context for {flag[2:]} {scope}" in result.out
+    if flag != "--interface":
+        assert "Owns card refunds." in result.out
+    assert "Submit a refund." in result.out
     assert "refund-api" in result.out
     assert "Keep the payment provider replaceable." in result.out
     assert "Only billing adapters import Stripe." in result.out

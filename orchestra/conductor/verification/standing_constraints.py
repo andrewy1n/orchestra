@@ -13,6 +13,7 @@ from orchestra.conductor.verification.requirements import (
     VERIFIED,
     RequirementState,
 )
+from orchestra.score.lookups import latest_record
 from orchestra.score.planning.standing_constraint import RECORD_TYPE
 
 VIOLATED = "violated"
@@ -48,17 +49,36 @@ def criterion_id(constraint_id: str) -> str:
     return f"standing-constraint:{constraint_id}"
 
 
+def _design_pins(record: Record) -> list[str]:
+    pins = record["payload"].get("standing_constraints")
+    return [pin for pin in pins if isinstance(pin, str)] if isinstance(pins, list) else []
+
+
 def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
-    ids: list[str] = []
-    for record in records:
-        if (
-            record["record_type"] == "score:design"
-            and record["lifecycle_state"] == "active"
-            and record["payload"].get("phase") == phase
-        ):
-            pinned = record["payload"].get("standing_constraints", [])
-            if isinstance(pinned, list):
-                ids.extend(item for item in pinned if isinstance(item, str))
+    reviews = [
+        record
+        for record in records
+        if record["record_type"] == "score:step-review"
+        and record["lifecycle_state"] == "recorded"
+        and record["payload"].get("phase") == phase
+        and record["payload"].get("step") == "design"
+    ]
+    approved = latest_record(reviews)
+    if approved is not None:
+        if "standing_constraints" in approved["payload"]:
+            return list(dict.fromkeys(_design_pins(approved)))
+        artifact_id = approved["payload"].get("reviewed_artifact")
+        artifact = next((record for record in records if record["id"] == artifact_id), None)
+        if artifact is not None and artifact["record_type"] == "score:design":
+            return list(dict.fromkeys(_design_pins(artifact)))
+    ids = [
+        pin
+        for record in records
+        if record["record_type"] == "score:design"
+        and record["lifecycle_state"] == "active"
+        and record["payload"].get("phase") == phase
+        for pin in _design_pins(record)
+    ]
     return list(dict.fromkeys(ids))
 
 

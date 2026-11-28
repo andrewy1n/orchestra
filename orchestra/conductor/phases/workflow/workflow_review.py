@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from orchestra.canon.project import Project
-from orchestra.canon.types import Record
+from orchestra.canon.types import JsonObject, Record
 from orchestra.score.lookups import current_phase, record_order
 from orchestra.score.planning.analyze import analyze_phase
 from orchestra.score.workflow.workflow_reviews import (
@@ -104,6 +104,11 @@ def record_step_review(
     if not isinstance(effort, str):
         raise WorkflowReviewError("phase has no effort")
     subject = f"{phase}-{step}-{fingerprint[:16]}"
+    reviewed_pins: JsonObject = {}
+    if step == "design" and current_artifact["record_type"] == "score:design":
+        reviewed_pins["standing_constraints"] = current_artifact["payload"].get(
+            "standing_constraints", []
+        )
     project.apply_at_snapshot(
         [
             {
@@ -120,6 +125,7 @@ def record_step_review(
                     "source_reviews": [record["id"] for record in sources],
                     "authority": authority,
                     "basis": basis,
+                    **reviewed_pins,
                 },
             }
         ],

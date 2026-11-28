@@ -9,6 +9,7 @@ from interfaces.interfaces_support import invoke
 from integration.test_architecture_change_review import orchestra_output, reconcile_stripe_adapter
 from orchestra.canon.project import Project
 from orchestra.canon.types import Record
+from orchestra.canon.validation import ValidationError
 from orchestra.score.planning.standing_constraint import is_current_constraint
 from orchestra.tools import Git
 
@@ -180,9 +181,14 @@ def test_review_reports_revision_specific_pinned_outcomes(refunds: tuple[Project
         body=DESIGN,
     )
     _review_step(project, "design", design)
+    with pytest.raises(ValidationError, match="use supersede"):
+        project.update(pinned, payload={"check": "true"})
     newer = project.supersede(
         pinned, payload={"rule": "A later phase may import Stripe.", "check": "true"}
     )["record"]
+    draft = project.supersede(design["id"], payload={"standing_constraints": [newer["id"]]})[
+        "record"
+    ]
     acceptance = project.create(
         record_type="score:acceptance",
         subject="refunds-behavior",
@@ -220,6 +226,15 @@ def test_review_reports_revision_specific_pinned_outcomes(refunds: tuple[Project
     git.text("commit", "-qm", "Use the Stripe adapter")
     fresh = git.head()
     view = orchestra_output(root, "view", "verification", "--effort", EFFORT)
+    assert "**R1**: unverified" in view
     rule = next(line for line in view.splitlines() if "**imports**" in line)
     assert "unverified" in rule
     assert pinned in rule and fresh[:7] in rule
+
+    _review_step(project, "design", draft)
+    project.update(draft["id"], payload={"standing_constraints": [pinned]})
+    orchestra_output(root, "check", "--phase", PHASE, "--standing-constraint", "imports")
+    adopted = orchestra_output(root, "view", "verification", "--effort", EFFORT)
+    rule = next(line for line in adopted.splitlines() if "**imports**" in line)
+    assert "): verified " in rule
+    assert f"pinned: {newer['id']}" in rule and fresh[:7] in rule

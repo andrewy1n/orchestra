@@ -53,6 +53,9 @@ expected revision. Do not update a current design in place.
 8. Record a workflow review only after explicit user approval or delegation.
    Use the design record id as the artifact. Match `authority` to the user's
    action. A review record cannot replace approval.
+   Review saves the listed standing constraint versions for subsequent checks.
+   Use `canon supersede` to publish a changed standing rule, then approve the
+   successor design to adopt the new rule.
 
 ```bash
 orchestra workflow review {phase} design \
