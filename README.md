@@ -231,7 +231,9 @@ Then install one host, or every host with `--all`:
 ./bin/orchestra install --only windsurf
 ```
 
-A `kind: skills` row runs its `npx skills add` tail instead:
+A `kind: skills` row runs its `npx skills add` tail instead. The installer
+passes the checkout as the source, selects every skill, and adds `-g` for
+`--global`:
 
 ```bash
 npx skills add -a codex
@@ -240,6 +242,17 @@ npx skills add -a github-copilot
 npx skills add -a cline
 npx skills add -a windsurf
 ```
+
+Each profile also gets `<checkout> -s '*' -y` after `add`.
+
+`npx skills add` copies skills into `.agents/skills` under the install base.
+In symlink mode (the default from a checkout) the installer then replaces each
+copy it finds there with a symlink to `skills/<name>`. `--copy` keeps the
+copies.
+
+The installer checks `.agents/skills` and the host's own skills directory, such as
+`~/.codeium/windsurf/skills`. It exits with an error that names any skill the
+delegate did not install.
 
 A missing or failing `npx` stops installation for that provider. After successful
 delegation, the registration records the profile. `--uninstall` removes the

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import shlex
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -40,15 +42,66 @@ class SkillsCliAdapter(BaseAdapter):
 
     def command(self) -> tuple[str, ...]:
         executable = os.environ.get(NPX_ENV, "npx")
-        return (executable, "skills", "add", "-a", self.profile)
+        scope_flags = ("-g",) if self.scope == "global" else ()
+        return (
+            executable,
+            "skills",
+            "add",
+            str(self.source_root),
+            "-a",
+            self.profile,
+            "-s",
+            "*",
+            "-y",
+            *scope_flags,
+        )
+
+    def _environment(self) -> dict[str, str]:
+        env = dict(os.environ)
+        if self.scope == "global":
+            env["HOME"] = str(self.base)
+        return env
+
+    def _install_dirs(self) -> tuple[Path, ...]:
+        shared = self.base / ".agents" / "skills"
+        own = self.root / self.provider.skills_subdir
+        return (shared,) if own == shared else (shared, own)
+
+    def _link_installed_skills(self) -> None:
+        directories = self._install_dirs()
+        missing: list[str] = []
+        for skill in sorted((self.source_root / "skills").iterdir()):
+            if not (skill / "SKILL.md").is_file():
+                continue
+            found = [
+                directory / skill.name
+                for directory in directories
+                if (directory / skill.name).exists() or (directory / skill.name).is_symlink()
+            ]
+            if not found:
+                missing.append(skill.name)
+            for destination in found:
+                if destination.is_symlink():
+                    destination.unlink()
+                else:
+                    shutil.rmtree(destination)
+                destination.symlink_to(skill)
+        if missing:
+            checked = ", ".join(str(directory) for directory in directories)
+            raise ValueError(
+                f"{self.delegate_label()} did not install {', '.join(missing)} under {checked}"
+            )
+
+    def _delegate_text(self) -> str:
+        return " ".join(["npx", *(shlex.quote(arg) for arg in self.command()[1:])])
 
     def delegate_label(self) -> str:
-        return f"npx skills add -a {self.profile} (profile: {self.profile})"
+        return f"{self._delegate_text()} (profile: {self.profile})"
 
     def registration_extra(self) -> dict[str, object]:
         return {
             "profile": self.profile,
-            "delegate": f"npx skills add -a {self.profile}",
+            "delegate": self._delegate_text(),
         }
 
     def plan(self, *, uninstall: bool = False) -> Plan:
@@ -70,12 +123,19 @@ class SkillsCliAdapter(BaseAdapter):
     def apply(self, plan: Plan) -> ApplyResult:
         self.base.mkdir(parents=True, exist_ok=True)
         completed = subprocess.run(
-            self.command(), cwd=self.base, capture_output=True, text=True, check=False
+            self.command(),
+            cwd=self.base,
+            env=self._environment(),
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if completed.returncode != 0:
             raise ValueError(
                 f"{self.delegate_label()} exited {completed.returncode}: {completed.stderr.strip()}"
             )
+        if self.mode == "symlink":
+            self._link_installed_skills()
         self.root.mkdir(parents=True, exist_ok=True)
         self._write_marker(())
         return ApplyResult(
