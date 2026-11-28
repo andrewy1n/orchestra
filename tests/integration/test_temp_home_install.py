@@ -20,6 +20,9 @@ MARKER = ".orchestra-install.json"
 
 NPX_STUB = """#!/bin/sh
 printf '%s\\n' "$*" >> "$ORCHESTRA_NPX_LOG"
+for skill in "$ORCHESTRA_NPX_SKILLS"/*/; do
+    mkdir -p "$HOME/.agents/skills/$(basename "$skill")"
+done
 exit 0
 """
 
@@ -33,6 +36,7 @@ def install(source: Path, home: Path, *args: str) -> subprocess.CompletedProcess
     env["HOME"] = str(home)
     env["ORCHESTRA_NPX"] = str(home.parent / "fake-bin" / "npx")
     env["ORCHESTRA_NPX_LOG"] = str(home.parent / "npx.log")
+    env["ORCHESTRA_NPX_SKILLS"] = str(source / "skills")
     stub = Path(env["ORCHESTRA_NPX"])
     stub.parent.mkdir(parents=True, exist_ok=True)
     stub.write_text(NPX_STUB, encoding="utf-8")
@@ -148,6 +152,6 @@ def test_temp_home_install_uses_skills_cli_for_a_generic_host(tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "profile: codex" in proc.stdout
     log = (home.parent / "npx.log").read_text(encoding="utf-8")
-    assert "skills add -a codex" in log
+    assert f"skills add {REPO_ROOT} -a codex -s * -y -g" in log
     payload = json.loads((home / ".codex" / MARKER).read_text(encoding="utf-8"))
     assert payload["profile"] == "codex"
