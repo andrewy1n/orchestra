@@ -616,3 +616,21 @@ def ready_for_verify(phase: Phase) -> None:
                 "effort": EFFORT,
             },
         )
+
+
+def record_fixture_design_review(project: Project, design: Record) -> None:
+    project.create(
+        record_type="score:step-review",
+        subject=f"{design['subject']}-approval",
+        payload={
+            "effort": design["payload"]["effort"],
+            "phase": design["payload"]["phase"],
+            "step": "design",
+            "reviewed_artifact": design["id"],
+            "reviewed_revision": design["revision"],
+            "input_fingerprint": "test-fixture",
+            "source_reviews": [],
+            "authority": "user-approval",
+            "basis": "Approved design fixture",
+        },
+    )

@@ -4,7 +4,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from orchestra.canon import record_payload
 from orchestra.canon.errors import RecordShapeError
+from orchestra.canon.fields import optional_text_list
 from orchestra.canon.types import Record
 from orchestra.conductor.verification.evidence import head_evidence
 from orchestra.conductor.verification.evidence.head_evidence import EvidenceIndex
@@ -50,8 +52,7 @@ def criterion_id(constraint_id: str) -> str:
 
 
 def _design_pins(record: Record) -> list[str]:
-    pins = record["payload"].get("standing_constraints")
-    return [pin for pin in pins if isinstance(pin, str)] if isinstance(pins, list) else []
+    return list(optional_text_list(record, record_payload(record), "standing_constraints"))
 
 
 def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
@@ -75,13 +76,7 @@ def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
         artifact_id = approved["payload"]["reviewed_artifact"]
         assert isinstance(artifact_id, str)
         return list(dict.fromkeys(_design_pins(designs[artifact_id])))
-    ids = [
-        pin
-        for record in designs.values()
-        if record["lifecycle_state"] == "active"
-        for pin in _design_pins(record)
-    ]
-    return list(dict.fromkeys(ids))
+    return []
 
 
 def _newer_id(records: Sequence[Record], pinned: Record) -> str | None:

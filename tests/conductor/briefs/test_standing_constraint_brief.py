@@ -107,7 +107,13 @@ def test_naming_payments_for_refunds_surfaces_the_stripe_rule(
 def test_area_without_a_rule_names_no_rules(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _seed(tmp_path)
+    project, _ = _seed(tmp_path)
+    project.create(
+        record_type="composer:area",
+        subject="shipping",
+        payload={"title": "Shipping"},
+        body="## Scope\nShip items.",
+    )
 
     brief = _design_brief(tmp_path, capsys, "shipping")
 
@@ -131,15 +137,6 @@ def test_design_record_accepts_pinned_standing_constraints(tmp_path: Path) -> No
     )
 
     assert design["payload"]["standing_constraints"] == [constraint_id]
-
-
-def test_area_without_a_rule_says_so(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    _seed(tmp_path)
-
-    brief = _design_brief(tmp_path, capsys, "paymnets")
-
-    assert "No standing constraints for area `paymnets`." in brief
-    assert RULE not in brief
 
 
 def test_missing_area_lists_the_areas_that_have_constraints(

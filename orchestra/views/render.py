@@ -41,7 +41,6 @@ from orchestra.conductor.tasks.assignment import task_assignment
 from orchestra.conductor.tasks.task_detail import ASSIGNMENT_AMENDMENT_TYPE
 from orchestra.conductor.verification.requirements import RequirementIndex, requirement_status
 from orchestra.conductor.verification.standing_constraints import (
-    pinned_constraint_ids,
     standing_constraint_status,
 )
 from orchestra.score.facts.detail_facts import (
@@ -472,7 +471,7 @@ def _phase_derived_lines(
     records = _effort_pool(records, effort)
     progress = phase_counts(records, phase)
     stage_text = _stage_text(stage)
-    head = head_of(phase) if head_of is not None and pinned_constraint_ids(records, phase) else None
+    head = head_of(phase) if head_of is not None else None
     statuses = requirement_status(records, phase, head, index=requirement_index)
     constraints = standing_constraint_status(records, phase, head)
     if progress.total == 0 and not statuses and not constraints and not stage_text:

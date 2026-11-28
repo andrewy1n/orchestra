@@ -10,11 +10,38 @@ from orchestra.composer.architecture import (
     UnknownScopeError,
     query_architecture,
 )
-from orchestra.composer.records import current_product, current_product_items
-from orchestra.score.planning.standing_constraint import read_standing_constraint
+from orchestra.composer.records import current_area, current_product, current_product_items
+from orchestra.score.planning.standing_constraint import (
+    StandingConstraint,
+    applicable,
+    declared_areas,
+    read_standing_constraint,
+)
+
+
+def _known_area(records: Sequence[Record], name: str) -> bool:
+    return current_area(records, name) is not None or name in declared_areas(records)
+
+
+def _constraint_section(constraints: Sequence[StandingConstraint]) -> str:
+    unique = {constraint.id: constraint for constraint in constraints}
+    return "\n\n".join(
+        [
+            "## Applicable standing constraints",
+            *(
+                f"### {constraint.name}\n"
+                f"**area**: {constraint.area}; **version**: {constraint.id}\n\n"
+                f"**rule**: {constraint.rule}\n\n"
+                f"**basis**: {constraint.basis}"
+                for constraint in sorted(unique.values(), key=lambda rule: (rule.name, rule.id))
+            ),
+        ]
+    )
 
 
 def _product_context(records: Sequence[Record], area: str) -> str:
+    if not _known_area(records, area):
+        raise UnknownScopeError(area, "scope", "names no area")
     lines = [f"## Product context for {area}"]
     product = current_product(records)
     if product is not None:
@@ -36,13 +63,18 @@ def _decisions(node: Component | Interface) -> list[str]:
     ]
 
 
-def _architecture_context(records: Sequence[Record], scope: Scope) -> str:
+def _architecture_context(
+    records: Sequence[Record], scope: Scope
+) -> tuple[str, list[StandingConstraint]]:
     try:
         model = query_architecture(records, scope)
     except UnknownScopeError:
-        if scope.kind == "area":
-            return f"No architecture components for area `{scope.name}`."
-        raise
+        if scope.kind != "area" or not _known_area(records, scope.name):
+            raise
+        return (
+            f"No architecture components for area `{scope.name}`.",
+            applicable(records, scope.name),
+        )
     components = [component for items in model.areas.values() for component in items]
     interfaces = model.interfaces
     if components:
@@ -57,17 +89,25 @@ def _architecture_context(records: Sequence[Record], scope: Scope) -> str:
         lines.extend((f"### {component.name}", component.responsibility, *_decisions(component)))
     for interface in interfaces:
         lines.extend((f"### {interface.name}", interface.provides, *_decisions(interface)))
-    constraints = {name for node in (*components, *interfaces) for name in node.constraints}
-    for name in sorted(constraints):
-        constraint = read_standing_constraint(model.constraints[name])
-        lines.append(
-            f"- **{constraint.name}** (version `{constraint.id}`): {constraint.rule} "
-            f"Basis: {constraint.basis}"
-        )
-    return "\n\n".join(lines)
+    names = {name for node in (*components, *interfaces) for name in node.constraints}
+    constraints = [read_standing_constraint(model.constraints[name]) for name in names]
+    if scope.kind == "area":
+        constraints.extend(applicable(records, scope.name))
+    return "\n\n".join(lines), constraints
 
 
-def project_context(records: Sequence[Record], kind: str, name: str) -> str:
+def project_context(records: Sequence[Record], kind: str, names: Sequence[str]) -> str:
     if kind == "product":
-        return _product_context(records, name)
-    return _architecture_context(records, Scope(kind, name))
+        return "\n\n".join(_product_context(records, name) for name in dict.fromkeys(names))
+
+    sections: list[str] = []
+    constraints: list[StandingConstraint] = []
+    for name in dict.fromkeys(names):
+        section, applicable_rules = _architecture_context(records, Scope(kind, name))
+        sections.append(section)
+        constraints.extend(applicable_rules)
+        if not applicable_rules and kind == "area":
+            sections.append(f"No standing constraints for area `{name}`.")
+    if constraints:
+        sections.append(_constraint_section(constraints))
+    return "\n\n".join(sections)

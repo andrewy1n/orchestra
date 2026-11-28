@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conductor_support import _commit_all
+from conductor_support import _commit_all, record_fixture_design_review
 from conftest import REPO_ROOT
 
 from orchestra.canon.project import Project, open_store
@@ -43,7 +43,9 @@ SCANNER = (
 )
 
 
-def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, Record]:
+def _seed(
+    store: Path, *, offending: bool, pin: bool = True, approved: bool = True
+) -> tuple[Project, Record]:
     payments = store / "orchestra" / "payments"
     payments.mkdir(parents=True)
     imports = "import stripe" if offending else "import json"
@@ -69,7 +71,7 @@ def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, R
         },
         body="## Basis\n\nProvider access belongs in billing adapters.\n",
     )
-    project.create(
+    design = project.create(
         record_type="score:design",
         subject="refunds-design",
         payload={
@@ -80,6 +82,8 @@ def _seed(store: Path, *, offending: bool, pin: bool = True) -> tuple[Project, R
         },
         body=DESIGN_BODY,
     )
+    if approved:
+        record_fixture_design_review(project, design)
     _commit_all(store, "seed refunds")
     return project, constraint
 
@@ -144,3 +148,13 @@ def test_unpinned_constraint_name_is_refused_without_check_run(store: Path) -> N
     assert "pinned" in (result.stderr + result.stdout).lower()
     after = [r for r in open_store(store).records() if r["record_type"] == "tuner:check-run"]
     assert len(after) == len(before)
+
+
+def test_draft_design_does_not_pin_a_constraint(store: Path) -> None:
+    project, _ = _seed(store, offending=False, approved=False)
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+    assert standing_constraint_status(project.records(), PHASE, _head(store)) == []

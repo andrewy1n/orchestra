@@ -18,7 +18,7 @@ from orchestra.conductor.phases.progress.phase_progress import (
 )
 from orchestra.score.lookups import live_work_items
 from orchestra.score.planning.phase import Phase, current_phase_model
-from orchestra.score.planning.standing_constraint import applicable, declared_areas
+from orchestra.score.planning.standing_constraint import declared_areas
 from orchestra.score.workflow.workflow_blockers import (
     WorkflowBlockerError,
     blocked_tasks,
@@ -29,7 +29,7 @@ from orchestra.score.workflow.workflow_selection import PhaseSelectionError, res
 
 Operation = Literal["phase", "prepare", "deliver", "single-step"]
 ActionState = Literal["ready", "blocked"]
-ProjectContext = Callable[[Sequence[Record], str, str], str]
+ProjectContext = Callable[[Sequence[Record], str, Sequence[str]], str]
 
 _VERSION = "1"
 _PHASE_STEPS: tuple[Step, ...] = ("spec", "design", "tasks", "execute", "verify", "land")
@@ -365,33 +365,15 @@ def _with_brief(project: Project, action: RunAction) -> RunAction:
     return replace(action, brief=text)
 
 
-def _constraints_section(records: list[Record], areas: Sequence[str]) -> str:
-    entries: list[str] = []
-    seen: set[str] = set()
-    for area in dict.fromkeys(areas):
-        found = applicable(records, area)
-        if not found:
-            entries.append(f"No standing constraints for area `{area}`.")
-        for constraint in found:
-            if constraint.id in seen:
-                continue
-            seen.add(constraint.id)
-            entries.append(
-                f"### {constraint.name}\n"
-                f"**area**: {constraint.area}; **version**: {constraint.id}\n\n"
-                f"**rule**: {constraint.rule}\n\n"
-                f"**basis**: {constraint.basis}"
-            )
-    if not areas:
-        known = declared_areas(records)
-        if known:
-            entries.append(
-                "No `--area` given, so no standing constraints are listed. "
-                f"Areas with constraints: {', '.join(known)}."
-            )
-    if not entries:
+def _unscoped_constraints_section(records: list[Record]) -> str:
+    known = declared_areas(records)
+    if not known:
         return ""
-    return "## Applicable standing constraints\n\n" + "\n\n".join(entries)
+    return (
+        "## Applicable standing constraints\n\n"
+        "No `--area` given, so no standing constraints are listed. "
+        f"Areas with constraints: {', '.join(known)}."
+    )
 
 
 def phase_step_action(
@@ -400,7 +382,7 @@ def phase_step_action(
     step: Step,
     areas: Sequence[str] = (),
     *,
-    project_context: ProjectContext | None = None,
+    project_context: ProjectContext,
     component: str = "",
     interface: str = "",
 ) -> RunAction:
@@ -411,20 +393,17 @@ def phase_step_action(
     if action.state != "ready":
         return action
     sections = [action.brief.rstrip()]
-    if step == "spec" and areas and project_context is not None:
-        sections.extend(project_context(records, "product", area) for area in dict.fromkeys(areas))
+    if step == "spec":
+        sections.append(project_context(records, "product", areas))
     if step == "design":
-        if project_context is not None:
-            if component:
-                sections.append(project_context(records, "component", component))
-            elif interface:
-                sections.append(project_context(records, "interface", interface))
-            else:
-                sections.extend(
-                    project_context(records, "area", area) for area in dict.fromkeys(areas)
-                )
-        if not component and not interface:
-            sections.append(_constraints_section(records, areas))
+        if component:
+            sections.append(project_context(records, "component", [component]))
+        elif interface:
+            sections.append(project_context(records, "interface", [interface]))
+        elif areas:
+            sections.append(project_context(records, "area", areas))
+        else:
+            sections.append(_unscoped_constraints_section(records))
     if any(sections[1:]):
         return replace(action, brief="\n\n".join(section for section in sections if section) + "\n")
     return action

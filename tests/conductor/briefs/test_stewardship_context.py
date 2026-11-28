@@ -76,6 +76,21 @@ def test_spec_brief_shows_scoped_product_context(
     assert "Capture card payments" in result.out
     assert "Buy shipping labels" not in result.out
 
+    unknown = main(
+        [
+            "workflow",
+            "brief",
+            PHASE,
+            "spec",
+            "--area",
+            "missing",
+            "--store",
+            str(project.project_root),
+        ]
+    )
+    assert unknown != 0
+    assert "names no area" in capsys.readouterr().err
+
 
 @pytest.mark.parametrize(
     ("flag", "scope"),
@@ -116,7 +131,7 @@ def test_design_brief_shows_scoped_architecture_context(
     project.create(
         record_type="composer:interface",
         subject="refund-api",
-        payload={"connects": ["billing-adapter"]},
+        payload={"connects": ["billing-adapter", "shipping-adapter"]},
         body="## Provides\nSubmit a refund.",
     )
     project.create(
@@ -135,6 +150,17 @@ def test_design_brief_shows_scoped_architecture_context(
             "targets": ["billing-adapter", "refund-api"],
         },
         body="## Basis\nKeep Stripe behind the adapter.",
+    )
+
+    project.create(
+        record_type="score:standing-constraint",
+        subject="billing-wide",
+        payload={
+            "area": "billing",
+            "rule": "Billing operations need audit records.",
+            "check": "true",
+        },
+        body="## Basis\nPreserve the audit trail.",
     )
 
     code = main(
@@ -161,3 +187,42 @@ def test_design_brief_shows_scoped_architecture_context(
     assert "Only billing adapters import Stripe." in result.out
     assert rule["id"] in result.out
     assert "Quotes freight." not in result.out
+
+    assert result.out.count(rule["id"]) == 1
+    if flag == "--area":
+        assert "Billing operations need audit records." in result.out
+        combined = main(
+            [
+                "workflow",
+                "brief",
+                PHASE,
+                "design",
+                "--area",
+                "billing",
+                "--area",
+                "shipping",
+                "--store",
+                str(project.project_root),
+            ]
+        )
+        captured = capsys.readouterr()
+        assert combined == 0, captured.out + captured.err
+        assert "Quotes freight." in captured.out
+        assert captured.out.count(rule["id"]) == 1
+    else:
+        assert "Billing operations need audit records." not in result.out
+
+    unknown = main(
+        [
+            "workflow",
+            "brief",
+            PHASE,
+            "design",
+            flag,
+            "missing",
+            "--store",
+            str(project.project_root),
+        ]
+    )
+    assert unknown != 0
+    assert f"names no {flag[2:]}" in capsys.readouterr().err

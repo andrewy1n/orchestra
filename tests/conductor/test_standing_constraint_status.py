@@ -6,10 +6,11 @@ from pathlib import Path
 
 import pytest
 from canon_support import make_project
+from conductor_support import record_fixture_design_review
 
 from orchestra.canon.errors import RecordShapeError
 from orchestra.canon.project import Project
-from orchestra.canon.types import JsonObject, Record
+from orchestra.canon.types import JsonObject, JsonValue, Record
 from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
     standing_constraint_status,
@@ -60,7 +61,7 @@ def _seed(root: Path) -> tuple[Project, Record]:
 
 
 def _pin(project: Project, constraint_id: str) -> Record:
-    return project.create(
+    design = project.create(
         record_type="score:design",
         subject="refunds-design",
         payload={
@@ -71,6 +72,9 @@ def _pin(project: Project, constraint_id: str) -> Record:
         },
         body=DESIGN_BODY,
     )
+
+    record_fixture_design_review(project, design)
+    return design
 
 
 def _run(
@@ -205,3 +209,16 @@ def test_no_head_reads_every_constraint_unverified(tmp_path: Path) -> None:
     outcomes = standing_constraint_status(project.records(), PHASE, None)
 
     assert [(o.outcome, o.check_run_id) for o in outcomes] == [("unverified", None)]
+
+
+@pytest.mark.parametrize("malformed", ["wrong-shape", [None]])
+def test_malformed_approved_pins_raise(tmp_path: Path, malformed: JsonValue) -> None:
+    project, constraint = _seed(tmp_path)
+    design = _pin(project, constraint["id"])
+    broken: Record = {
+        **design,
+        "payload": {**design["payload"], "standing_constraints": malformed},
+    }
+    records = [record for record in project.records() if record["id"] != design["id"]]
+    with pytest.raises(RecordShapeError, match="must be a list of strings"):
+        standing_constraint_status([*records, broken], PHASE, HEAD)
