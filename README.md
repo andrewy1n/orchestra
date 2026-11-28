@@ -249,6 +249,9 @@ Each profile also gets `<checkout> -s '*' -y` after `add`.
 In symlink mode (the default from a checkout) the installer then replaces each
 copy it finds there with a symlink to `skills/<name>`. `--copy` keeps the
 copies.
+The installer checks `.agents/skills` and the host's own skills directory, such as
+`~/.codeium/windsurf/skills`. It exits with an error that names any skill the
+delegate did not install.
 
 A missing or failing `npx` stops installation for that provider. After successful
 delegation, the registration records the profile. `--uninstall` removes the

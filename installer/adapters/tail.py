@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -61,27 +62,46 @@ class SkillsCliAdapter(BaseAdapter):
             env["HOME"] = str(self.base)
         return env
 
+    def _install_dirs(self) -> tuple[Path, ...]:
+        shared = self.base / ".agents" / "skills"
+        own = self.root / self.provider.skills_subdir
+        return (shared,) if own == shared else (shared, own)
+
     def _link_installed_skills(self) -> None:
-        installed = self.base / ".agents" / "skills"
+        directories = self._install_dirs()
+        missing: list[str] = []
         for skill in sorted((self.source_root / "skills").iterdir()):
-            destination = installed / skill.name
             if not (skill / "SKILL.md").is_file():
                 continue
-            if not (destination.exists() or destination.is_symlink()):
-                continue
-            if destination.is_symlink():
-                destination.unlink()
-            else:
-                shutil.rmtree(destination)
-            destination.symlink_to(skill)
+            found = [
+                directory / skill.name
+                for directory in directories
+                if (directory / skill.name).exists() or (directory / skill.name).is_symlink()
+            ]
+            if not found:
+                missing.append(skill.name)
+            for destination in found:
+                if destination.is_symlink():
+                    destination.unlink()
+                else:
+                    shutil.rmtree(destination)
+                destination.symlink_to(skill)
+        if missing:
+            checked = ", ".join(str(directory) for directory in directories)
+            raise ValueError(
+                f"{self.delegate_label()} did not install {', '.join(missing)} under {checked}"
+            )
+
+    def _delegate_text(self) -> str:
+        return " ".join(["npx", *(shlex.quote(arg) for arg in self.command()[1:])])
 
     def delegate_label(self) -> str:
-        return f"npx skills add -a {self.profile} (profile: {self.profile})"
+        return f"{self._delegate_text()} (profile: {self.profile})"
 
     def registration_extra(self) -> dict[str, object]:
         return {
             "profile": self.profile,
-            "delegate": f"npx skills add -a {self.profile}",
+            "delegate": self._delegate_text(),
         }
 
     def plan(self, *, uninstall: bool = False) -> Plan:

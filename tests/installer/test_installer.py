@@ -38,11 +38,13 @@ case " $* " in
 *) target="$PWD" ;;
 esac
 for name in ${ORCHESTRA_NPX_INSTALL:-}; do
-    mkdir -p "$target/.agents/skills/$name"
-    printf 'copied\\n' > "$target/.agents/skills/$name/SKILL.md"
+    mkdir -p "$target/${ORCHESTRA_NPX_TARGET:-.agents/skills}/$name"
+    printf 'copied\\n' > "$target/${ORCHESTRA_NPX_TARGET:-.agents/skills}/$name/SKILL.md"
 done
 exit "${ORCHESTRA_NPX_EXIT:-0}"
 """
+
+SKILLS = "init tasks"
 
 HOOKS_PAYLOAD = {
     "hooks": {
@@ -159,6 +161,7 @@ def run_install(
     home: Path | None = None,
     npx_exit: int | None = 0,
     npx_install: str = "",
+    npx_target: str = ".agents/skills",
 ) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT), env.get("PYTHONPATH", "")]).strip(
@@ -170,6 +173,7 @@ def run_install(
     env["ORCHESTRA_NPX_LOG"] = str(log)
     env["ORCHESTRA_NPX_EXIT"] = str(npx_exit)
     env["ORCHESTRA_NPX_INSTALL"] = npx_install
+    env["ORCHESTRA_NPX_TARGET"] = npx_target
     if home is not None:
         env["HOME"] = str(home)
     return subprocess.run(
@@ -845,20 +849,30 @@ def test_hooks_absent_from_every_host_still_installs(source, project, home):
 
 
 def test_tail_delegates_to_npx_skills_add_and_reports_the_profile(source, project, home):
-    proc = run_install("--only", "codex", "--home", str(home), project=project, source=source)
+    proc = run_install(
+        "--only", "codex", "--home", str(home), project=project, source=source, npx_install=SKILLS
+    )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert npx_calls(project) == [f"skills add {source} -a codex -s * -y"]
-    assert "npx skills add -a codex" in proc.stdout
+    assert f"npx skills add {source} -a codex -s '*' -y" in proc.stdout
     assert "profile: codex" in proc.stdout
     payload = json.loads((home / ".codex" / MARKER).read_text())
     assert payload["profile"] == "codex"
+    assert payload["delegate"] == f"npx skills add {source} -a codex -s '*' -y"
     assert payload["entries"] == []
     assert "verified: ok" in proc.stdout
 
 
 def test_tail_global_scope_installs_globally_from_the_source(source, project, home):
     proc = run_install(
-        "--only", "codex", "--global", "--home", str(home), project=project, source=source
+        "--only",
+        "codex",
+        "--global",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        npx_install=SKILLS,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert npx_calls(project) == [f"skills add {source} -a codex -s * -y -g"]
@@ -873,7 +887,7 @@ def test_tail_symlink_mode_links_installed_skills_to_the_source(source, project,
         str(home),
         project=project,
         source=source,
-        npx_install="init tasks other",
+        npx_install=SKILLS,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     installed = home / ".agents" / "skills"
@@ -901,12 +915,49 @@ def test_tail_copy_mode_keeps_the_installed_copies(source, project, home):
     assert not installed.is_symlink()
 
 
-def test_tail_symlink_mode_skips_skills_the_delegate_did_not_install(source, project, home):
+def test_tail_fails_when_the_delegate_did_not_install_every_skill(source, project, home):
     proc = run_install(
-        "--only", "codex", "--global", "--home", str(home), project=project, source=source
+        "--only",
+        "codex",
+        "--global",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        npx_install="init",
+    )
+    assert proc.returncode != 0
+    assert "tasks" in proc.stderr
+    assert str(home / ".agents" / "skills") in proc.stderr
+    assert not (home / ".codex" / MARKER).exists()
+
+
+def test_tail_symlink_mode_links_the_hosts_own_skills_directory(source, project, home):
+    proc = run_install(
+        "--only",
+        "windsurf",
+        "--global",
+        "--home",
+        str(home),
+        project=project,
+        source=source,
+        npx_install=SKILLS,
+        npx_target=".codeium/windsurf/skills",
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert not (home / ".agents").exists()
+    linked = home / ".codeium" / "windsurf" / "skills" / "init"
+    assert linked.is_symlink()
+    assert linked.resolve() == (source / "skills" / "init").resolve()
+
+
+def test_tail_symlink_mode_links_installed_skills_at_project_scope(source, project):
+    proc = run_install(
+        "--only", "gemini", "--yes", project=project, source=source, npx_install=SKILLS
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    linked = project / ".agents" / "skills" / "tasks"
+    assert linked.is_symlink()
+    assert linked.resolve() == (source / "skills" / "tasks").resolve()
 
 
 def test_tail_dry_run_reports_the_profile_without_delegating(source, project, home):
@@ -914,7 +965,7 @@ def test_tail_dry_run_reports_the_profile_without_delegating(source, project, ho
         "--only", "gemini", "--home", str(home), "--dry-run", project=project, source=source
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "delegate npx skills add -a gemini-cli" in proc.stdout
+    assert f"delegate npx skills add {source} -a gemini-cli -s '*' -y" in proc.stdout
     assert "profile: gemini-cli" in proc.stdout
     assert npx_calls(project) == []
     assert not home.exists()
@@ -979,7 +1030,13 @@ def test_explicit_directory_adapter(
 def test_tail_uninstall_names_the_profile_it_leaves_behind(source, project, home):
     assert (
         run_install(
-            "--only", "codex", "--home", str(home), project=project, source=source
+            "--only",
+            "codex",
+            "--home",
+            str(home),
+            project=project,
+            source=source,
+            npx_install=SKILLS,
         ).returncode
         == 0
     )
