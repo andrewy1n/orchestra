@@ -7,11 +7,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from conductor_support import _commit_all, record_fixture_design_review
 from conftest import REPO_ROOT
 
 from orchestra.canon.project import Project, open_store
 from orchestra.canon.types import Record
+from orchestra.cli import main
 from orchestra.conductor.verification.standing_constraints import (
     criterion_id,
     standing_constraint_status,
@@ -158,3 +160,31 @@ def test_draft_design_does_not_pin_a_constraint(store: Path) -> None:
     assert result.returncode == 4, result.stdout + result.stderr
     assert "not pinned" in result.stderr
     assert standing_constraint_status(project.records(), PHASE, _head(store)) == []
+
+
+def test_task_plan_policy_cannot_approve_standing_constraint_pins(store: Path) -> None:
+    project, _ = _seed(store, offending=False, approved=False)
+    (design,) = project.list("score:design")
+    record_fixture_design_review(project, design, authority="task-plan-policy")
+
+    result = _check(store, NAME)
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "not pinned" in result.stderr
+
+
+def test_check_reports_malformed_approved_pins(
+    store: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project, _ = _seed(store, offending=False)
+    records = project.records()
+    design = next(record for record in records if record["record_type"] == "score:design")
+    design["payload"]["standing_constraints"] = [None]
+    monkeypatch.setattr(Project, "records", lambda _: records)
+
+    result = main(["check", "--standing-constraint", NAME, "--phase", PHASE, "--store", str(store)])
+
+    captured = capsys.readouterr()
+    assert result == 4
+    assert "must be a list of strings" in captured.err
+    assert not captured.out

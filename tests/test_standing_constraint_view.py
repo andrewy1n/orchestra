@@ -89,7 +89,12 @@ def _approved_design(*pinned: Record) -> list[Record]:
     review = _record(
         "score:step-review",
         f"{PHASE}-design-approval",
-        {"phase": PHASE, "step": "design", "reviewed_artifact": design["id"]},
+        {
+            "phase": PHASE,
+            "step": "design",
+            "reviewed_artifact": design["id"],
+            "authority": "user-approval",
+        },
     )
     return [design, review]
 

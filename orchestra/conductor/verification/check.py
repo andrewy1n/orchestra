@@ -261,7 +261,11 @@ def run_standing_constraint_check(
     allow_dirty: bool = False,
     timeout: float = DEFAULT_TIMEOUT_S,
 ) -> CheckOutcome:
-    records = project.records()
+    try:
+        records = project.records()
+        pins = pinned_constraint_ids(records, phase)
+    except StoreError as exc:
+        return CheckOutcome(4, "", str(exc))
     pinned = None
     effort = ""
     for design in records:
@@ -271,7 +275,7 @@ def run_standing_constraint_check(
             and design["payload"].get("phase") == phase
         ):
             effort = str(design["payload"].get("effort") or effort)
-    for pinned_id in pinned_constraint_ids(records, phase):
+    for pinned_id in pins:
         candidate = next((r for r in records if r["id"] == pinned_id), None)
         if (
             candidate is not None

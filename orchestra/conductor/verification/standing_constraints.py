@@ -68,6 +68,7 @@ def pinned_constraint_ids(records: Sequence[Record], phase: str) -> list[str]:
         and record["lifecycle_state"] == "recorded"
         and record["payload"].get("phase") == phase
         and record["payload"].get("step") == "design"
+        and record["payload"].get("authority") in ("user-approval", "explicit-delegation")
         and isinstance(artifact := record["payload"].get("reviewed_artifact"), str)
         and artifact in designs
     ]
