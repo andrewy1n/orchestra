@@ -29,7 +29,15 @@ ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
     "workflow start": ("--cwd", "--json", "--snapshot-token", "--store"),
     "workflow status": ("--cwd", "--json", "--store"),
     "workflow next": ("--cwd", "--json", "--no-brief", "--store"),
-    "workflow brief": ("--area", "--cwd", "--json", "--skill", "--store"),
+    "workflow brief": (
+        "--area",
+        "--component",
+        "--cwd",
+        "--interface",
+        "--json",
+        "--skill",
+        "--store",
+    ),
     "workflow review": ("--artifact", "--authority", "--basis", "--cwd", "--json", "--store"),
     "workflow amend-check": (
         "--basis",
