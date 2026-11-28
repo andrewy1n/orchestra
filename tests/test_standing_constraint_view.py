@@ -279,3 +279,21 @@ def test_phase_head_is_none_before_the_phase_branch_exists(tmp_path: Path) -> No
     )
 
     assert phase_head_of([phase], tmp_path)(PHASE) is None
+
+
+def test_effort_view_honors_an_approval_correction_in_another_effort() -> None:
+    constraint = _constraint()
+    design, approval = _approved_design(constraint)
+    records = [*_requirement_records(), constraint, design, approval]
+    correction = _record(
+        "score:step-review",
+        "corrected-approval",
+        {"phase": "shipping", "effort": "shipping-effort", "step": "design"},
+    )
+    correction["relationships"] = {"corrects": [approval["id"]]}
+
+    before = render_view(VERIFICATION, records, effort="e", head_of=lambda _: "abc")
+    after = render_view(VERIFICATION, [*records, correction], effort="e", head_of=lambda _: "abc")
+
+    assert "### Standing constraints" in before
+    assert "### Standing constraints" not in after

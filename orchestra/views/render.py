@@ -468,11 +468,11 @@ def _phase_derived_lines(
     stage: PhaseProgress | None = None,
     head_of: HeadOf | None = None,
 ) -> list[str]:
-    records = _effort_pool(records, effort)
-    progress = phase_counts(records, phase)
+    effort_records = _effort_pool(records, effort)
+    progress = phase_counts(effort_records, phase)
     stage_text = _stage_text(stage)
     head = head_of(phase) if head_of is not None else None
-    statuses = requirement_status(records, phase, head, index=requirement_index)
+    statuses = requirement_status(effort_records, phase, head, index=requirement_index)
     constraints = standing_constraint_status(records, phase, head)
     if progress.total == 0 and not statuses and not constraints and not stage_text:
         return []
