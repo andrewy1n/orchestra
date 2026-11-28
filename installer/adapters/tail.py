@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -40,7 +41,39 @@ class SkillsCliAdapter(BaseAdapter):
 
     def command(self) -> tuple[str, ...]:
         executable = os.environ.get(NPX_ENV, "npx")
-        return (executable, "skills", "add", "-a", self.profile)
+        scope_flags = ("-g",) if self.scope == "global" else ()
+        return (
+            executable,
+            "skills",
+            "add",
+            str(self.source_root),
+            "-a",
+            self.profile,
+            "-s",
+            "*",
+            "-y",
+            *scope_flags,
+        )
+
+    def _environment(self) -> dict[str, str]:
+        env = dict(os.environ)
+        if self.scope == "global":
+            env["HOME"] = str(self.base)
+        return env
+
+    def _link_installed_skills(self) -> None:
+        installed = self.base / ".agents" / "skills"
+        for skill in sorted((self.source_root / "skills").iterdir()):
+            destination = installed / skill.name
+            if not (skill / "SKILL.md").is_file():
+                continue
+            if not (destination.exists() or destination.is_symlink()):
+                continue
+            if destination.is_symlink():
+                destination.unlink()
+            else:
+                shutil.rmtree(destination)
+            destination.symlink_to(skill)
 
     def delegate_label(self) -> str:
         return f"npx skills add -a {self.profile} (profile: {self.profile})"
@@ -70,12 +103,19 @@ class SkillsCliAdapter(BaseAdapter):
     def apply(self, plan: Plan) -> ApplyResult:
         self.base.mkdir(parents=True, exist_ok=True)
         completed = subprocess.run(
-            self.command(), cwd=self.base, capture_output=True, text=True, check=False
+            self.command(),
+            cwd=self.base,
+            env=self._environment(),
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if completed.returncode != 0:
             raise ValueError(
                 f"{self.delegate_label()} exited {completed.returncode}: {completed.stderr.strip()}"
             )
+        if self.mode == "symlink":
+            self._link_installed_skills()
         self.root.mkdir(parents=True, exist_ok=True)
         self._write_marker(())
         return ApplyResult(
