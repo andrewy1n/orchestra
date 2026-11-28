@@ -1,6 +1,6 @@
 {
   "namespace": "conductor",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "types": {
     "failed-attempt": {
       "purpose": "An approach that should not be retried as-is",
@@ -100,6 +100,25 @@
         "tokens_total": {
           "type": "integer",
           "optional": true
+        }
+      }
+    },
+    "redispatch-attempt": {
+      "purpose": "One re-dispatch of a task, counted against the failure it repairs",
+      "lifecycle": "event",
+      "fields": {
+        "work_item": {
+          "ref": "score:work-item"
+        },
+        "effort": {
+          "ref": "score:effort",
+          "optional": true
+        },
+        "failure_key": {
+          "type": "string"
+        },
+        "dispatch_id": {
+          "type": "string"
         }
       }
     },

@@ -108,6 +108,7 @@ ORCHESTRA_FLAGS: dict[str, tuple[str, ...]] = {
     "wave resolve": ("--cwd", "--json", "--store"),
     "task": (),
     "task redispatch": ("--cwd", "--expected-revision", "--json", "--store"),
+    "task resume": ("--cwd", "--json", "--store"),
     "task land": ("--cwd", "--evidence", "--json", "--schema", "--store"),
     "analyze": ("--cwd", "--json", "--stage", "--store"),
     "gate": ("--cwd", "--json", "--store"),
