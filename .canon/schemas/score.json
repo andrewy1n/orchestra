@@ -412,13 +412,6 @@
         "input_fingerprint": {
           "type": "string"
         },
-        "standing_constraints": {
-          "list": {
-            "ref": "score:standing-constraint",
-            "pin": true
-          },
-          "optional": true
-        },
         "source_reviews": {
           "list": {
             "ref": "score:step-review",
@@ -508,6 +501,7 @@
     "design": {
       "purpose": "How the specification should work",
       "lifecycle": "current",
+      "supersede_only": true,
       "fields": {
         "phase": {
           "ref": "score:phase"
